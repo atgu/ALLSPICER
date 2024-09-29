@@ -1,0 +1,1565 @@
+---
+title: "pleiotropy_method1_comparison"
+author: "Wenhan Lu"
+date: "7/12/2022"
+output: pdf_document
+---
+
+## Setup environment
+
+```{r}
+setwd('~/Dropbox (Partners HealthCare)/analysis/ukb_exomes_pleiotropy/')
+source('~/ukbb_exomes_pleiotropy/R/constants.R')
+```
+
+## Read raw data
+
+```{r}
+read_pleiotropy_subset <- function(test, tranche, type){
+  data <- read_delim(paste0('~/Downloads/corr_testing_', test, '_', type,'_', tranche, '.txt.bgz'), delim='\t', col_types = cols(phenocode = col_character())) %>%
+  mutate(annotation = factor(annotation, levels = annotation_types, labels = annotation_names))
+  if(test == 'burden') data$Pvalue = data$Pvalue_Burden
+  return(data)
+}
+```
+
+## Read result files
+
+```{r}
+pleiotropy_result_name <- function(test, tranche){
+  if(tranche == '300k'){
+    return(paste0('continuous_AF_1e_4_', test,'_syn_var_corr_', tranche,'check_jul2022'))
+  }else{
+    # return(paste0('continuous_new_AF_1e_4_', test,'_syn_var_corr_', tranche, '_oct2022_rerun'))
+    return(paste0('continuous_final_AF_1e_4_burden_syn_var_corr_500k_2023'))
+  }
+}
+# pleiotropy_result_name <- function(test, tranche){
+#   if(tranche == '300k'){
+#     return(paste0('continuous_AF_1e_4_', test,'_syn_var_corr_', tranche,'check_jul2022'))
+#   }else{
+#     return(paste0('continuous_new_AF_1e_4_', test,'_syn_var_corr_', tranche))
+#   }
+# }
+read_pleiotropy_results <- function(test, tranche){
+  results <- read_csv(paste0(result_path, paste0(pleiotropy_result_name(test, tranche), '_results.csv')))
+  return(results)
+}
+
+read_pleiotropy_betas <- function(test, tranche){
+  betas <- read_csv(paste0(result_path, paste0(pleiotropy_result_name(test, tranche), '_beta.csv')))
+  return(betas)
+}
+
+modify_results_table <- function(results, test, tranche){
+  gene_data <- read_pleiotropy_subset(test, tranche, 'gene')
+  if(tranche == '500k'){ 
+    gene_data <- gene_data %>%
+      mutate(n_cases = n_cases_defined) %>%
+      mutate(coding = if_else(is.na(coding), '', coding)) %>%
+      mutate(phenoname = paste0(trait_type, '_', phenocode, '_',  pheno_sex, '_',  coding, '_',  modifier)) %>%
+      select(gene_symbol, annotation, Pvalue = Pvalue_Burden, description, n_cases, phenoname) %>%
+      mutate(annotation = factor(annotation, labels = annotation_types))
+    }
+  results <- results %>%
+    # select(-sig_gene.x, -sig_gene.y, -sig_gene) %>%
+    merge(., gene_data, by.x = c('annotation', 'pheno1', 'gene'), 
+          by.y = c('annotation', 'phenoname', 'gene_symbol'), all.x = T) %>%
+    merge(., gene_data, by.x = c('annotation', 'pheno2', 'gene'), 
+          by.y = c('annotation', 'phenoname', 'gene_symbol'), all.x = T) %>%
+    mutate(sig_gene.x = if_else(Pvalue.x <  2.5e-6, 1, 0),
+           sig_gene.y = if_else(Pvalue.y <  2.5e-6, 1, 0),) %>%
+    mutate(sig_gene = sig_gene.x + sig_gene.y) %>%
+    # filter(!is.na(sig_gene.x) & !is.na(sig_gene.y)) %>%
+    filter(sig_gene == 2 & n_var > 1) %>%
+    select(gene, annotation, pheno1, description1 = description.x, n_cases1 = n_cases.x, burden_pvalue1 = Pvalue.x, pheno2,description2 = description.y, n_cases2 = n_cases.y, burden_pvalue2 = Pvalue.y, corr, n_var, c_hat, lambda, pvalue) %>%
+    filter(!is.na(pvalue))
+  return(results)
+}
+```
+
+```{r}
+results_500k <- read_pleiotropy_results('burden', '500k') 
+# results_300k <- read_pleiotropy_results('burden', '300k')
+
+# betas_500k <- read_pleiotropy_betas('burden', '500k')
+# betas_300k <- read_pleiotropy_betas('burden', '300k')
+```
+
+
+```{r}
+results_500k <- results_500k %>%
+  merge(., pheno_corr %>% select(corr, i_phenoname, j_phenoname), by.x = c('pheno1', 'pheno2'), by.y = c('i_phenoname', 'j_phenoname'), all.x = T)
+```
+
+
+
+```{r}
+# results_300k <- modify_results_table(results_300k, 'burden', '300k')
+results_500k <- modify_results_table(results_500k, 'burden', '500k')
+```
+
+
+```{r}
+results_500k <- results_500k %>%
+  filter(pheno1 %in% gene_point_check$phenocode) %>%
+  filter(pheno2 %in% gene_point_check$phenocode) %>%
+  filter(burden_pvalue1 < 2.5e-6) %>%
+  filter(burden_pvalue2 < 2.5e-6)
+```
+
+# Number of cases
+
+```{r}
+summary(results_300k$n_cases1)
+summary(results_300k$n_cases2)
+```
+
+```{r}
+hist(results_300k$n_cases1, breaks = 100)
+hist(results_300k$n_cases2, breaks = 100)
+```
+
+```{r}
+summary(results_500k$n_cases1)
+summary(results_500k$n_cases2)
+```
+
+```{r}
+hist(results_500k$n_cases1, breaks = 100)
+hist(results_500k$n_cases2, breaks = 100)
+```
+```{r}
+# view(results_500k %>% select("gene", "annotation", "pheno1",  "description1", "burden_pvalue1", "pheno2", "description2", "burden_pvalue2", "corr", "n_var", "pvalue") %>% filter(annotation == 'Synonymous'))
+view(results_500k %>% select("gene", "annotation", "pheno1",  "description1", "burden_pvalue1", "pheno2", "description2", "burden_pvalue2", "corr", "n_var", "pvalue"))
+```
+
+
+## Individual QQ plots
+
+```{r}
+figure_real_data_qq <- function(results, name=NULL, save=TRUE){
+  results <- results %>% 
+    group_by(annotation) %>%
+    arrange(pvalue) %>%
+    add_count() %>%
+    mutate(observed = -log10(pvalue), 
+           rank = order(pvalue), 
+           expected = -(log10(rank / (n+1))),
+           annotation = factor(annotation, levels = annotation_names, labels = annotation_types))
+  mx <- as.numeric(max(max(results[results$pvalue>0, 'observed']), 
+                       max(results[results$pvalue>0, 'expected'])))
+  
+  figure <- results %>% 
+    ggplot+ aes(y=observed,x=expected, color = annotation, label = gene) + 
+    geom_point(alpha = 0.5) + 
+    geom_abline(intercept = 0, slope = 1) +
+    geom_hline(yintercept = -log10(0.05), lty=2) +
+    labs(x="Expected -log10(p)", y="Observed -log10(p)", color = 'Annotation') +
+    annotation_color_scale + annotation_fill_scale + 
+    xlim(0, mx) +
+    ylim(0, mx) +
+    themes 
+    # geom_text_repel(max.overlaps = 2)
+  
+  if(save){
+    png(paste0(figure_path, name, "_qqplot.png"), width=5, height=3.5, units = 'in', res = 300)
+    print(figure)
+    dev.off()
+  }
+  return(figure)
+}
+```
+
+```{r}
+write_csv(results_500k %>% filter(pvalue==0), paste0(result_path,'continuous_new_AF_1e_4_burden_syn_var_corr_500k_pvalue0.csv'))
+```
+
+```{r}
+b <- results_500k %>%
+  # filter(n_var < 2300) %>%
+  # filter(n_var > 10 ) %>%
+  # filter((startsWith(pheno1, '30')| (pheno1 %in% c('50', '51', '21001', '23104'))) & (startsWith(pheno2, '30') | (pheno2 %in% c('50', '51', '21001', '23104')))) %>%
+  # filter(!((gene %in% c('HECTD4', 'ANK1', 'AL645922.1', 'AL162417.1', 'HSPA1B', 'SLC22A3'))& (annotation == 'Synonymous'))) %>%
+  # filter(!((gene %in% c('TET2'))& (annotation == 'pLoF'))) %>%
+  # filter(!((gene %in% c('PIEZO1'))& (annotation == 'missense|LC'))) %>%
+  # filter(n_cases1 > 390000 & n_cases2 > 390000) %>%
+  # filter(pvalue > cutoff) %>%
+  mutate(annotation=factor(annotation, levels = annotation_types, labels=annotation_names)) %>%
+  figure_real_data_qq(., paste0(pleiotropy_result_name('burden', '500k'), '_abnormal_syn_pLoF_mis_removal'), save=F)
+b
+```
+
+```{r}
+sub <- results_500k %>%
+  filter((startsWith(pheno1, '30')| (pheno1 %in% c('50', '51', '21001', '23104'))) & (startsWith(pheno2, '30') | (pheno2 %in% c('50', '51', '21001', '23104')))) %>%
+  filter(!((gene %in% c('HECTD4', 'ANK1', 'AL645922.1', 'AL162417.1', 'HSPA1B', 'SLC22A3'))& (annotation == 'Synonymous'))) %>%
+  filter(!((gene %in% c('TET2'))& (annotation == 'pLoF'))) %>%
+  filter(!((gene %in% c('PIEZO1'))& (annotation == 'Missense'))) %>%
+  filter(pvalue < 0.05)
+write.csv(sub, paste0(result_path, 'significant_triplets.csv'))
+```
+
+
+```{r}
+cutoff <- 1e-7
+sub <- a %>% filter((pvalue < cutoff | (annotation == 'Synonymous' & pvalue < 5e-2)))
+table(sub$gene, sub$annotation)
+```
+
+```{r}
+cutoff <- 1e-7
+sub <- results_500k %>% filter((pvalue < cutoff | (annotation == 'Synonymous' & pvalue < 5e-2)) & n_cases1 > 390000 & n_cases2 > 390000)
+# sub <- results_500k %>% filter((annotation == 'Synonymous' & pvalue < 5e-2) & n_cases1 > 390000 & n_cases2 > 390000)
+table(sub$gene, sub$annotation)
+```
+
+
+
+```{r}
+cutoff <- 1e-6
+sub <- results_300k %>% filter(pvalue < cutoff & n_cases1 > 200000 & n_cases2 > 200000)
+results_300k %>%
+  # filter(!(gene %in% c('TET2'))) %>%
+  filter(n_cases1 > 200000 & n_cases2 > 200000) %>%
+  # filter(pvalue > cutoff) %>%
+  figure_real_data_qq(., pleiotropy_result_name('burden', '500k'), save=F)
+```
+
+```{r}
+cutoff <- 0.05
+sub <- results_500k %>% filter(pvalue < cutoff & annotation=='Synonymous')
+results_500k_2 %>%
+ filter(!(gene %in% c('TET2'))) %>%
+  filter(n_cases1 > 470000 & n_cases2 > 470000) %>%
+  # filter(pvalue > cutoff) %>%
+  figure_real_data_qq(., pleiotropy_result_name('burden', '500k'), save=F)
+table(sub$gene, sub$annotation)
+```
+
+
+```{r}
+results_500k_2 %>%
+  filter(n_cases1 > 470000 & n_cases2 > 470000) %>%
+  # filter(pvalue > 1e-8) %>%
+  figure_real_data_qq(., pleiotropy_result_name('burden', '500k'))
+results_300k %>%
+ # filter(n_cases1 > 250000 & n_cases2 > 250000) %>%
+  figure_real_data_qq(., pleiotropy_result_name('burden', '300k'))
+```
+
+# 400k high_qual phenotypes
+
+```{r}
+
+```
+
+## compared shared triplets
+
+```{r}
+results_merged <- results_300k %>%
+  select(gene, annotation, pheno1, pheno2, c_hat, lambda, pvalue, n_var, corr, description1, description2, n_cases1, n_cases2) %>%
+  merge(., y = results_500k %>%
+  select(gene, annotation, pheno1, pheno2, c_hat, lambda, pvalue, n_var, corr, description1, description2, n_cases1, n_cases2), 
+  # by = c('gene','annotation', 'pheno1', 'pheno2', 'description1', 'description2'), 
+  by = c('gene','annotation', 'pheno1', 'pheno2'),
+  suffixes = c('.300k', '.500k')) %>%
+  mutate(sig.300k = pvalue.300k < 0.05, sig.500k = pvalue.500k < 0.05)
+```
+
+```{r}
+sum(results_merged$n_var.300k > results_merged$n_var.500k)
+sum(results_merged$n_var.300k > results_merged$n_var.500k)/dim(results_merged)[1]
+```
+
+```{r}
+table(results_merged$sig.300k, results_merged$sig.500k, dnn = c('300k', '500k'))
+```
+```{r}
+view(results_merged %>% select("gene", "annotation", "pheno1",  "description1", "pheno2", "description2", "n_var.300k", "pvalue.300k", "n_var.500k", "pvalue.500k"))
+```
+
+```{r}
+results <- results_merged %>% 
+  group_by(annotation) %>%
+  arrange(pvalue.500k) %>%
+  add_count() %>%
+  mutate(observed = -log10(pvalue.500k), 
+          rank = order(pvalue.500k), 
+          expected = -(log10(rank / (n+1))),)
+          # annotation = factor(annotation, levels = annotation_types))
+mx <- as.numeric(max(max(results[results$pvalue.500k>0, 'observed']), 
+                  max(results[results$pvalue.500k>0, 'expected'])))
+  
+figure <- results %>% 
+  ggplot+ aes(y=observed,x=expected, color = annotation, label = gene) + 
+  geom_point(alpha = 0.5) + 
+  geom_abline(intercept = 0, slope = 1) +
+  labs(x="Expected -log10(p)", y="Observed -log10(p)", color = 'Annotation') +
+  annotation_color_scale + annotation_fill_scale + 
+  xlim(0, mx) +
+  ylim(0, mx) +
+  themes 
+figure
+```
+
+```{r}
+figure = results_merged %>%
+  ggplot + aes(x = -log10(pvalue.300k), y = -log10(pvalue.500k), color = annotation) + 
+  geom_abline(slope=1, intercept = 0, lty = 2) +
+  # geom_vline(xintercept = -log10(0.05), lty = 3) +
+  # geom_hline(yintercept = -log10(0.05), lty = 3) +
+  labs(x = '-log10(pvalue.300k)', y = '-log10(pvalue.400k)') +
+  geom_point() +
+  theme_classic() +
+  scale_point_size_continuous(range = c(0.1, 0.5)) +
+  annotation_color_scale + 
+  annotation_fill_scale + 
+  themes
+
+# figure <- results_merged %>%
+#   mutate(annotation = factor(annotation, levels = c('pLoF', 'Missense', 'Synonymous'))) %>%
+#   # ggplot + aes(x = -log10(pvalue.300k), y = -log10(pvalue.500k), color = annotation) + 
+#   ggplot + aes(x = pvalue.300k, y = pvalue.500k, color = annotation) + 
+#   geom_abline(slope=1, intercept = 0, lty = 2) +
+#   # geom_vline(xintercept = -log10(0.05), lty = 3) +
+#   # geom_hline(yintercept = -log10(0.05), lty = 3) +
+#   geom_point() +
+#   theme_classic() +
+#   scale_point_size_continuous(range = c(0.1, 0.5)) +
+#   annotation_color_scale + 
+#   annotation_fill_scale + 
+#   facet_wrap(annotation~., scales = 'free') +
+#   themes
+figure
+
+```
+
+```{r}
+png(paste0(figure_path, 'continuous_shared_phenos_pvalue_300k_vs_400k.png'), height = 3, width = 4, units = 'in', res = 300)
+print(figure)
+dev.off()
+```
+
+```{r}
+results_merged %>%
+  mutate(annotation = factor(annotation, levels = c('pLoF', 'Missense', 'Synonymous'))) %>%
+  ggplot + aes(x =lambda.300k, y = lambda.500k, color = annotation) + 
+  geom_abline(slope=1, intercept=0, lty=2)+
+  geom_point() +
+  theme_classic() +
+  scale_point_size_continuous(range = c(0.1, 0.5)) +
+  annotation_color_scale + 
+  annotation_fill_scale + 
+  themes
+
+results_merged %>%
+  mutate(annotation = factor(annotation, levels = c('pLoF', 'Missense', 'Synonymous'))) %>%
+  ggplot + aes(x =lambda.300k, y = lambda.500k, color = annotation) + 
+  geom_abline(slope=1, intercept=0, lty=2)+
+  geom_point() +
+  theme_classic() +
+  scale_point_size_continuous(range = c(0.1, 0.5)) +
+  annotation_color_scale + 
+  annotation_fill_scale + 
+  facet_wrap(annotation~., scales = 'free') +
+  geom_smooth() +
+  themes
+```
+
+```{r}
+results_merged %>%
+  group_by(annotation) %>% 
+  summarise(cor_coef = cor.test(lambda.300k, lambda.500k)$estimate,
+            p_val = cor.test(lambda.300k, lambda.500k)$p.value)
+```
+
+```{r}
+results_merged %>%
+  ggplot + aes(x =n_var.300k, y = n_var.500k, color = annotation) + 
+  geom_abline(slope=1, intercept=0, lty=2)+
+  geom_point() +
+  theme_classic() +
+  scale_point_size_continuous(range = c(0.1, 0.5)) +
+  annotation_color_scale + 
+  annotation_fill_scale + 
+  themes
+```
+
+```{r}
+cor.test(results_merged$n_var.300k, results_merged$n_var.500k)
+```
+
+```{r}
+results_merged %>%
+  ggplot + aes(x =corr.300k, y = corr.500k, color = annotation) + 
+  geom_point() +
+  geom_abline(slope=1, intercept=0, lty=2)+
+  theme_classic() +
+  scale_point_size_continuous(range = c(0.1, 0.5)) +
+  annotation_color_scale + 
+  annotation_fill_scale + 
+  themes
+```
+
+```{r}
+cor.test(results_merged$corr.300k, results_merged$corr.500k)
+```
+
+```{r}
+results_merged %>%
+  ggplot + aes(x =c_hat.300k, y = c_hat.500k, color = annotation) + 
+  geom_point() +
+  geom_abline(slope=1, intercept=0, lty=2)+
+  theme_classic() +
+  scale_x_log10() +
+  scale_y_log10() +
+  scale_point_size_continuous(range = c(0.1, 0.5)) +
+  annotation_color_scale + 
+  annotation_fill_scale + 
+  themes
+```
+
+```{r}
+results_long <- results_merged %>%
+  select(gene, annotation, pheno1, description1, pheno2, description2, corr = corr.300k, lambda = lambda.300k, pvalue = pvalue.300k, n_var=n_var.300k) %>%
+  mutate(label = '300k') %>%
+  rbind(., results_merged %>%
+  select(gene, annotation, pheno1, description1, pheno2, description2, corr = corr.500k, lambda = lambda.500k, pvalue = pvalue.500k, n_var=n_var.500k)%>%
+  mutate(label = '500k'))
+```
+
+```{r}
+results_long %>%
+  mutate(annotation = factor(annotation, levels = c("pLoF", "Missense", "synonymous" ), labels = annotation_names)) %>%
+  ggplot + aes(x = label, y = n_var, color = annotation) +
+  geom_boxplot(alpha = 0.5) +
+  theme_classic() +
+  scale_y_log10() + 
+  annotation_color_scale +
+  annotation_fill_scale +
+  themes
+```
+
+```{r}
+results_long %>%
+  ggplot + aes(x = abs(corr), y = -log10(pvalue), color = label) +
+  geom_point(alpha = 0.5) +
+  # geom_smooth() +
+  theme_classic() +
+  # scale_y_log10() + 
+  # scale_x_log10() +
+  # annotation_color_scale + 
+  # annotation_fill_scale + 
+  themes
+```
+
+## Betas
+
+```{r}
+beta_result_500k <- results_merged %>% 
+  filter(sig.300k != sig.500k) %>% 
+  merge(., betas_500k %>%
+        mutate(annotation = factor(annotation, levels = annotation_types, labels = annotation_names)), by = c('pheno1', 'pheno2', 'annotation', 'gene'), all.x = T) %>%
+  mutate(pheno_tmp2 = if_else(pheno1 > pheno2, pheno2, pheno1),
+         pheno_tmp1 = if_else(pheno1 > pheno2, pheno1, pheno2)) %>%
+  mutate(pheno1 = if_else(pheno_tmp1 > pheno_tmp2, pheno_tmp2, pheno1),
+         pheno2 = if_else(pheno_tmp1 > pheno_tmp2, pheno_tmp1, pheno2),) %>%
+  select(pheno1, pheno2, annotation, gene, description1, description2, c_hat = c_hat.500k, lambda = lambda.500k, pvalue = pvalue.500k,n_var = n_var.500k, corr = corr.500k, b1, b2, AF) %>%
+  mutate(tranche = '500k')
+
+beta_result_300k <- results_merged %>% 
+  filter(sig.300k != sig.500k) %>% 
+  merge(., betas_300k %>%
+        mutate(annotation = factor(annotation, levels = annotation_types, labels = annotation_names)), by = c('pheno1', 'pheno2', 'annotation', 'gene'), all.x = T) %>%
+  mutate(pheno_tmp2 = if_else(pheno1 > pheno2, pheno2, pheno1),
+         pheno_tmp1 = if_else(pheno1 > pheno2, pheno1, pheno2)) %>%
+  mutate(pheno1 = if_else(pheno_tmp1 > pheno_tmp2, pheno_tmp2, pheno1),
+         pheno2 = if_else(pheno_tmp1 > pheno_tmp2, pheno_tmp1, pheno2),) %>%
+  select(pheno1, pheno2, annotation, gene, description1, description2, c_hat = c_hat.300k, lambda = lambda.300k, pvalue = pvalue.300k,n_var = n_var.300k, corr = corr.300k, b1, b2, AF) %>%
+  mutate(tranche = '300k')
+
+beta_result <- rbind(beta_result_300k, beta_result_500k)
+```
+
+```{r}
+beta_result_long <- beta_result %>%
+  pivot_wider(id_cols = c('pheno1', 'pheno2', 'gene', 'annotation', "description1", "description2"), names_from = 'tranche', 
+              values_from =c("c_hat", "lambda", "pvalue",  "n_var", "corr", "b1", "b2", "AF"))
+```
+
+```{r}
+genes <- unique(beta_result$gene)
+g <- "PIEZO1"
+for(g in genes){
+  figure <- beta_result %>%
+    filter(gene == g)%>%
+    mutate(b1_adjusted = sqrt(2*AF*(1-AF))*b1, 
+           b2_adjusted = sqrt(2*AF*(1-AF))*b2) %>% 
+    ggplot + aes(x = b1, y = b2) +
+    geom_point(aes(alpha = 0.5, color = tranche)) +
+    geom_abline(slope = 1, intercept = 0, lty =2) + 
+    labs(title = g) +
+    facet_grid(tranche~pheno1+pheno2) +
+    theme(strip.text.y = element_text(angle = 0)) + 
+    geom_text(aes(label=paste0(' corr:',round(corr,2), '\n', 'pvalue:', format(pvalue, scientific=T, digit=2))), x = -Inf, y= Inf, hjust = -0.05, vjust = 1, size =3)
+  
+  png(paste0(figure_path, '/pheno_pair_beta/af_not_adjusted/',g, '_pheno_pair_beta_300_vs_500_v1.png'), height = 6, width = 20, units = 'in', res = 300)
+  print(figure)
+  dev.off()
+  
+}
+```
+
+```{r}
+beta_result_500k <- results_merged %>% 
+  filter(sig.300k != sig.500k) %>% 
+  merge(., betas_500k %>%
+        mutate(annotation = factor(annotation, levels = annotation_types, labels = annotation_names)), by = c('pheno1', 'pheno2', 'annotation', 'gene'), all.x = T) 
+
+beta_result <- beta_result_500k %>% 
+  filter(sig.300k != sig.500k) %>% 
+  merge(., betas_300k %>%
+        mutate(annotation = factor(annotation, levels = annotation_types, labels = annotation_names)), by = c('pheno1', 'pheno2', 'annotation', 'gene'), all.x = T) 
+```
+
+## Correlation check
+
+```{r}
+read_pheno_corr <-function(tranche){
+  pheno_corr = read_delim(paste0(data_path, 'corr_estimate_syn_var_full_',tranche, '.txt.bgz'), delim = '\t',
+                         col_types = cols(i_phenocode = col_character(), j_phenocode = col_character())) %>%
+    select(1:3, 5, 12) %>%
+    mutate(corr=entry)
+  return(pheno_corr)
+} 
+```
+
+```{r}
+pheno_corr_300k <- read_pheno_corr('300k')
+pheno_corr_500k <- read_pheno_corr('500k')
+```
+
+```{r}
+gene_merged <- gene_300k %>%
+  select(phenocode, coding, n_cases, description, trait_type) %>%
+  unique() %>%
+  merge(., 
+        gene_500k %>% 
+          select(phenocode, coding, n_cases = n_cases_defined, description, trait_type) %>%
+          unique(), 
+        by = c('phenocode', 'coding', 'description', 'trait_type'), 
+        suffixes = c('.300k', '.500k'))
+```
+
+```{r}
+gene_merged %>%
+  ggplot + aes(x =n_cases.300k, y = n_cases.500k) + 
+  geom_point() +
+  # geom_smooth() +
+  geom_abline(slope=1, intercept=0, lty=2, color = 'purple')+
+  theme_classic() +
+  scale_x_log10() +
+  scale_y_log10() +
+  scale_point_size_continuous(range = c(0.1, 0.5)) +
+  annotation_color_scale + 
+  annotation_fill_scale + 
+  themes
+```
+
+```{r}
+cor.test(gene_merged$n_cases.300k, gene_merged$n_cases.500k)
+```
+
+## subset data for Luke
+
+```{r}
+genename <- 'ANK1'
+annt <- 'Synonymous'
+phenocode1 <- '30060'
+phenocode2 <- c('30070','30240','30290','30660','30750','30840')
+```
+
+```{r}
+var_300k_sub <- read_pleiotropy_subset('burden', '300k', 'var')
+```
+
+```{r}
+var_300k_sub <- read_pleiotropy_subset('burden', '300k', 'var') %>%
+  filter(gene == genename & annotation == annotation & pheno1 == phenocode1 & pheno2 %in% phenocode2)
+
+var_500k_sub <- read_pleiotropy_subset('burden', '500k', 'var') %>%
+  filter(gene == genename & annotation == annotation & pheno1 == phenocode1 & pheno2 %in% phenocode2)
+```
+
+```{r}
+write_csv(var_300k_sub, paste0(result_path, 'var_subset_', genename, '_300k.csv'))
+write_csv(var_500k_sub, paste0(result_path, 'var_subset_', genename, '_500k.csv'))
+```
+
+```{r}
+var_300k_sub <- read_csv(paste0(result_path, 'var_subset_', genename, '_300k.csv')) %>%
+  filter(pheno1 == phenocode1 & pheno2 == phenocode2)
+var_500k_sub <- read_csv(paste0(result_path, 'var_subset_', genename, '_500k.csv')) %>%
+  filter(pheno1 == phenocode1 & pheno2 == phenocode2)
+```
+
+```{r}
+write_csv(var_300k_sub, paste0(result_path, 'var_subset_', genename, '_', phenocode1, '_', phenocode2, '_300k.csv'))
+write_csv(var_500k_sub, paste0(result_path, 'var_subset_', genename, '_', phenocode1, '_', phenocode2, '_500k.csv'))
+```
+
+```{r}
+gene_300k_sub <- read_csv(paste0(result_path, 'gene_subset_', tolower(genename), '_', tolower(annt), '_', phenocode1, '_', phenocode2, '_300k.csv'))
+gene_500k_sub <- read_csv(paste0(result_path, 'gene_subset_', tolower(genename), '_', tolower(annt), '_', phenocode1, '_', phenocode2, '_500k.csv'))
+```
+
+## Correlation comparison
+
+```{r}
+corr_diff <- read_tsv('~/Downloads/syn_imp_corr_diff_gt_5e_2.tsv')
+```
+
+```{r}
+dim(corr_diff)/2
+dim(unique(corr_diff %>% select(i_phenocode, i_coding)))
+```
+
+```{r}
+corr_diff <- corr_diff %>%
+  mutate(i_trait_type  = if_else(i_trait_type == 'icd_first_occurrence', 'categorical', i_trait_type),
+         j_trait_type  = if_else(j_trait_type == 'icd_first_occurrence', 'categorical', j_trait_type),
+         mean_cases_300k = (i_cases_300k + j_cases_300k)/2,
+         mean_cases_500k = (i_cases_500k + j_cases_500k)/2,
+         cases_diff_300k = (i_cases_300k - j_cases_300k),
+         cases_diff_500k = (i_cases_500k - j_cases_500k),
+         cases_diff_300k_std = (i_cases_300k - j_cases_300k)/(i_cases_300k + j_cases_300k),
+         cases_diff_500k_std = (i_cases_500k - j_cases_500k)/(i_cases_500k + j_cases_500k),)
+table(corr_diff$i_trait_type, corr_diff$j_trait_type)
+```
+
+```{r, fig.height=4, fig.width=4}
+corr_diff %>%
+  ggplot + aes(corr_300k, corr_500k) +
+  geom_point() + 
+  scale_size(range = c(0.01,5)) +
+  geom_abline(slope=1, intercept=0, color = 'red', lty=2) + 
+  geom_abline(slope=1, intercept=0.05, color = 'red') +
+  geom_abline(slope=1, intercept=-0.05, color = 'red') +
+  theme_classic() + themes
+```
+
+```{r}
+corr_long <- corr_diff %>%
+  select(1:8, corr = corr_300k, cases_diff = cases_diff_300k, cases_diff_std = cases_diff_300k_std, mean_cases = mean_cases_300k) %>%
+  mutate(label = '300k') %>%
+  rbind(
+    corr_diff %>% 
+      select(1:8, corr = corr_500k, cases_diff = cases_diff_500k, cases_diff_std = cases_diff_500k_std, mean_cases = mean_cases_500k) %>% 
+      mutate(label = '500k')
+  )
+```
+
+```{r}
+corr_long %>%
+  ggplot + aes(cases_diff_std, corr, color = label) +
+  geom_point() + 
+  scale_x_log10() +
+  theme_classic() + themes
+```
+
+```{r}
+corr_long %>%
+  ggplot + aes(cases_diff, corr, color = label) +
+  geom_point() + 
+  scale_x_log10() +
+  theme_classic() + themes
+```
+
+```{r}
+corr_long %>%
+  ggplot + aes(mean_cases, corr, color = label) +
+  geom_point() + 
+  scale_x_log10() +
+  theme_classic() + themes
+```
+
+# Chi-square simulation
+
+```{r}
+lambda <- seq(100, 3000, 10)
+pvalue_1000 <- 1-pchisq(lambda, 1000-1)
+pvalue_1200 <- 1-pchisq(lambda, 1000*sqrt(1.5)-1)
+lambda_sim <- data.frame(lambda = rep(lambda, 2),
+                         pvalue = c(pvalue_1000, pvalue_1200),
+                         n_var  = rep(c('1000', '1200'), each=291))
+```
+
+```{r}
+lambda_sim %>%
+  ggplot + aes(lambda, -log10(pvalue), color=n_var) +
+  # xlim(1000,1500) +
+  geom_point()  + theme_classic() + themes
+```
+
+```{r}
+lambda <- seq(0, 500, 1)
+pvalue_100 <- 1- pchisq(lambda, 100-1)
+pvalue_120 <- 1- pchisq(lambda, 100*sqrt(1.5)-1)
+lambda_sim <- data.frame(lambda = rep(lambda, 2),
+                         pvalue = c(pvalue_100, pvalue_120),
+                         n_var  = rep(c('100', '120'), each=501))
+```
+
+```{r}
+lambda_sim %>%
+  ggplot + aes(lambda, -log10(pvalue), color=n_var) +
+  xlim(100, 300) +
+  geom_point()  + theme_classic() + themes
+```
+
+```{r}
+lambda_1 <- seq(0, 300, 1)
+lambda_2 <- 1.5*lambda_1
+pvalue_100 <- 1 - pchisq(c(lambda_1, lambda_2), 100-1)
+lambda_sim <- data.frame(index = rep(0:300, 2),
+                         lambda = c(lambda_1, lambda_2),
+                         pvalue = pvalue_100,
+                         label  = rep(c('300k', '500k'), each=301))
+```
+
+```{r}
+lambda_sim %>%
+  ggplot + aes(index, -log10(pvalue), color=label) +
+  xlab('lambda_1 \n n_var = 100') +
+  geom_point()  + theme_classic() + themes
+
+
+```
+
+```{r}
+lambda_1 <- seq(0, 300, 1)
+lambda_2 <- 1.5*lambda_1
+pvalue_100 <- 1 - pchisq(c(lambda_1, lambda_2), 100-1)
+pvalue_120 <- 1 - pchisq(c(lambda_1, lambda_2), 120-1)
+lambda_sim <- data.frame(index = rep(0:300, 2),
+                         lambda = c(lambda_1, lambda_2),
+                         pvalue = pvalue_120,
+                         label  = rep(c('300k', '500k'), each=301))
+```
+
+```{r}
+lambda_sim %>%
+  ggplot + aes(index, -log10(pvalue), color=label) +
+  xlab('lambda_1 \n n_var = 120') +
+  geom_point()  + theme_classic() + themes
+
+
+```
+
+```{r}
+lambda_1 <- seq(0, 300, 1)
+lambda_2 <- 1.5*lambda_1
+pvalue_100 <- 1- pchisq(c(lambda_2), 100-1)
+pvalue_120 <- 1- pchisq(c(lambda_1), 120-1)
+lambda_sim <- data.frame(index = rep(0:300, 2),
+                         lambda = c(lambda_1, lambda_2),
+                         pvalue = c(pvalue_120, pvalue_100),
+                         label  = rep(c('300k : n_var=120', '500k : n_var=100'), each=301))
+```
+
+```{r}
+lambda_sim %>%
+  ggplot + aes(index, -log10(pvalue), color=label) +
+  geom_point()  + theme_classic() + themes
+
+
+```
+
+## synonymous associations in 500k but not 300k
+
+```{r}
+tmp_300k <- results_300k%>%
+  select(gene, annotation, pheno1, pheno2, c_hat, lambda, pvalue, n_var, corr, description1=description.x, description2=description.y)
+tmp_500k <- results_500k%>%
+  select(gene, annotation, pheno1, pheno2, c_hat, lambda, pvalue, n_var, corr, description1=description.x, description2=description.y)
+t <- anti_join(tmp_500k, tmp_300k, by = c('gene','annotation', 'pheno1', 'pheno2', 'description1', 'description2')) %>% filter(annotation == 'Synonymous')
+```
+
+```{r}
+var_500k_sub <- read_pleiotropy_subset('burden', '500k', 'var') %>%
+  filter(gene %in% t$gene & annotation == 'Synonymous' & pheno1 %in% t$pheno1 & pheno2 %in% t$pheno2)
+```
+
+
+## ALB
+```{r}
+betas_500k <- read_pleiotropy_betas('burden', '500k')
+```
+
+```{r}
+beta_alb <- betas_500k %>%
+  filter(gene == 'ALB' & AF < 0.0001) %>%
+  filter(pheno1 == '30600' & pheno2 == '30680')
+```
+
+```{r}
+beta_pcsk9 <- betas_500k %>%
+  filter(gene == 'PCSK9') %>%
+  # filter(AF < 0.0001) %>%
+  filter(pheno1 == '30640' & pheno2 == '30780')
+```
+
+```{r}
+pcsk9 <- read_delim(paste0(data_path, 'pcsk9_ldldirect_apob_var.txt.bgz'), delim='\t', col_types = cols(phenocode = col_character()))
+```
+
+```{r}
+pcsk9_sub <- pcsk9 %>% 
+  select(locus, alleles, phenocode, AF , gene, annotation, BETA, Pvalue)
+```
+
+
+```{r}
+annotations <- c('pLoF', 'missense|LC', 'synonymous')
+pcsk9_wide <- pcsk9_sub %>%
+    mutate(annotation = if_else(annotation %in% c('missense', 'LC'), 'missense|LC', annotation)) %>%
+    filter(annotation %in% annotations) %>%
+    mutate(
+      BETA_adjusted = sqrt(2*AF*(1-AF))*BETA
+    ) %>%
+  select(-Pvalue) %>%
+  pivot_wider(names_from = phenocode, names_prefix = 'beta_', values_from = BETA, id_cols = c('locus', 'alleles','AF', 'gene', 'annotation')) 
+pcsk9_pvalue <- pcsk9_sub %>%
+    mutate(annotation = if_else(annotation %in% c('missense', 'LC'), 'missense|LC', annotation)) %>%
+  select(locus, alleles, phenocode, gene, annotation, Pvalue, AF) %>%
+  group_by(locus, alleles, gene, annotation, AF) %>%
+  summarize(mean_p = mean(Pvalue)) %>%
+  merge(., pcsk9_wide, by= c('locus', 'alleles', 'gene', 'annotation', 'AF'))
+```
+
+```{r}
+figure <- pcsk9_pvalue %>%
+ #  filter(AF < 0.0001) %>%
+  filter(AF == 1.2663e-06) %>%
+  mutate(annotation = factor(annotation, levels=annotation_types)) %>%
+  ggplot + 
+  # aes(x=sqrt(2*AF*(1-AF))*beta_30640, y=sqrt(2*AF*(1-AF))*beta_30780, color = annotation, size = mean_p) +
+  aes(x=beta_30640, y=beta_30780, color = annotation, size = mean_p) +
+  labs(x='Apolipoprotein B', y='LDL direct', size = 'Mean Pvalue') + 
+  scale_size_continuous(breaks = c(0.1, 0.5, 1), range = c(0.5, 2)) +
+  # scale_y_log10(label = comma) + 
+  # scale_x_log10(label = comma) +
+  geom_point() +
+  # geom_abline(slope = 1, intercept = 0, lty=2) +
+  geom_vline(xintercept = 0, lty=2) +
+  geom_hline(yintercept = 0, lty=2) +
+  annotation_color_scale + annotation_fill_scale + themes +
+  # geom_text(data=pcsk9_pvalue %>% 
+  #                   filter(AF < 0.0001) %>% 
+  #                   filter(sqrt(2*AF*(1-AF))*beta_30640 > 0.005) %>% 
+  #                   mutate(annotation = factor(annotation, levels=annotation_types)),
+  #                   aes(label = alleles)) +
+  facet_wrap(~annotation, labeller = label_type)
+figure
+
+png(paste0(figure_path, 'pcsk9_apob_ldl_direct_singleton_raw.png'), height = 4, width = 8, units = 'in', res = 300)
+print(figure)
+dev.off()
+```
+
+
+```{r}
+## LDL direct
+# Perform t-test by group
+t_test_result <- pcsk9_pvalue %>%
+  group_by(annotation) %>%
+  summarize(t_statistic = t.test(sqrt(2*AF*(1-AF))*beta_30780, mu = 0, alternative = "less")$statistic,
+            p_value = t.test(sqrt(2*AF*(1-AF))*beta_30780, mu = 0, alternative = "less")$p.value)
+
+# Print the result
+print(t_test_result)
+```
+```{r}
+## ApoB
+# Perform t-test by group
+t_test_result <- pcsk9_pvalue %>%
+  group_by(annotation) %>%
+  summarize(t_statistic = t.test(sqrt(2*AF*(1-AF))*beta_30640, mu = 0, alternative = "less")$statistic,
+            p_value = t.test(sqrt(2*AF*(1-AF))*beta_30640, mu = 0, alternative = "less")$p.value)
+
+# Print the result
+print(t_test_result)
+```
+```{r}
+pcsk9_pvalue %>%
+  group_by(annotation) %>%
+  dplyr::summarize(
+    mean_beta_30780 = mean(beta_30780, na.rm=T),
+    mean_beta_30780_af_adjusted = mean(sqrt(2*AF*(1-AF))*beta_30780, na.rm=T),
+    mean_beta_30640 = mean(beta_30640, na.rm=T),
+    mean_beta_30640_af_adjusted = mean(sqrt(2*AF*(1-AF))*beta_30640, na.rm=T),
+  )
+```
+
+
+
+```{r}
+figure <- alb_pvalue %>%
+  # mutate(annotation = factor(annotation, levels=annotation_types, labels = annotation_names)) %>%
+  ggplot + aes(x=sqrt(2*AF*(1-AF))*beta_30600, y=sqrt(2*AF*(1-AF))*beta_30680, color = annotation, size = -log(mean_p)) +
+  labs(x='Albumin', y='Calcium') + 
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, lty=2) +
+  annotation_color_scale + annotation_fill_scale + themes +facet_wrap(~annotation, labeller = label_type) 
+figure
+
+png(paste0(figure_path, 'alb_albumin_calcium_af_1e_4_beta_final_400k.png'), height = 3, width = 8, units = 'in', res = 300)
+print(figure)
+dev.off()
+```
+
+```{r}
+beta_mamdc2 <- betas_500k %>%
+  filter(gene == 'MAMDC2' & AF < 0.0001) %>%
+  filter(pheno1 == 'Corneal_resistance_factor_left_custom' & pheno2 == 'IOP_Goldmann_left_custom')
+```
+
+
+```{r}
+figure <- beta_mamdc2 %>%
+  mutate(annotation = factor(annotation, levels=annotation_types, labels = annotation_names)) %>%
+  ggplot + aes(x=sqrt(2*AF*(1-AF))*b1, y=sqrt(2*AF*(1-AF))*b2, color = annotation) +
+  labs(x='Corneal_resistance_factor_left_custom', y='IOP_Goldmann_left_custom') + 
+  geom_point() +
+  # geom_abline(slope = 1, intercept = 0, lty=2) +
+  annotation_color_scale + annotation_fill_scale + themes +facet_wrap(~annotation, scale = 'free')
+
+figure
+# png(paste0(figure_path, 'alb_albumin_calcium_af_1e_4_beta_final_400k.png'), height = 3, width = 8, units = 'in', res = 300)
+# print(figure)
+# dev.off()
+```
+
+### ALB analysis
+```{r}
+alb <- read_delim(paste0(data_path, 'alb_albumin_calcium_var_hgvsp_', tranche,'.txt.bgz'), delim='\t', col_types = cols(phenocode = col_character()))
+```
+
+```{r}
+alb_sub <- alb %>% 
+  select(locus, alleles, phenocode, AF =  pop_AF, gene, annotation, BETA, Pvalue)
+```
+
+
+```{r}
+annotations <- c('pLoF', 'missense|LC', 'synonymous')
+alb_wide <- alb_sub %>%
+    mutate(annotation = if_else(annotation %in% c('missense', 'LC'), 'missense|LC', annotation)) %>%
+    filter(annotation %in% annotations) %>%
+    mutate(
+      BETA_adjusted = sqrt(2*AF*(1-AF))*BETA
+    ) %>%
+  select(-Pvalue) %>%
+      pivot_wider(names_from = phenocode, names_prefix = 'beta_', values_from = BETA, id_cols = c('locus', 'alleles','AF', 'gene', 'annotation')) 
+alb_pvalue <- alb_sub %>%
+    mutate(annotation = if_else(annotation %in% c('missense', 'LC'), 'missense|LC', annotation)) %>%
+  select(locus, alleles, phenocode, gene, annotation, Pvalue, AF) %>%
+  group_by(locus, alleles, gene, annotation, AF) %>%
+  summarize(mean_p = mean(Pvalue)) %>%
+  merge(., alb_wide, by= c('locus', 'alleles', 'gene', 'annotation', 'AF')) %>%
+  mutate(beta_30600_adjusted = sqrt(2*AF*(1-AF))*beta_30600, 
+         beta_30680_adjusted = sqrt(2*AF*(1-AF))*beta_30680, )
+```
+
+```{r}
+figure <- alb_pvalue %>%
+  mutate(annotation = factor(annotation, levels=annotation_types)) %>%
+  ggplot + aes(x=sqrt(2*AF*(1-AF))*beta_30600, y=sqrt(2*AF*(1-AF))*beta_30680, color = annotation, size = -log(mean_p)) +
+  labs(x='Albumin', y='Calcium') + 
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, lty=2) +
+  annotation_color_scale + annotation_fill_scale + themes +facet_wrap(~annotation, labeller = label_type) 
+figure
+
+png(paste0('~/Desktop/ALB_30600_30680.png'), height = 3, width = 6, units = 'in', res = 300)
+print(figure)
+dev.off()
+
+# png(paste0(figure_path, 'alb_albumin_calcium_af_1e_4_beta_final_400k.png'), height = 4, width = 8, units = 'in', res = 300)
+# print(figure)
+# dev.off()
+```
+
+```{r}
+single_test <- function(data, pheno_corr, pheno1, pheno2, n_ind, sig_level, gene){
+  # n_ind <- n_ind %>% filter(phenocode %in% c(pheno1, pheno2)) %>% summarise(mean=mean(n_cases))
+  # n_ind <- as.numeric(n_ind$mean)
+  sub <- data %>% select(1:6, pheno1, pheno2) %>% filter(complete.cases(.))
+  sub <- as.data.frame(sub)
+  if(nrow(sub)>1){
+    A <- 2*diag(sub$pop_AF)
+  }else{
+    A <- as.matrix(2*sub$pop_AF)
+  }
+  b1_hat <- t(as.matrix(sub[,pheno1]))
+  b2_hat <- t(as.matrix(sub[,pheno2]))
+  r <- pheno_corr
+  c_hat <- get_c_hat(b1_hat, b2_hat, A, r)
+  lambda <- get_likelihood_test_stats(n_ind, r, b1_hat, b2_hat, c_hat, A)
+  pvalue <- 1 - pchisq(lambda, length(b1_hat)-1)
+  results <- data.frame(pheno1, pheno2, c_hat, lambda, pvalue, gene, length(b1_hat))
+  colnames(results) <- c('pheno1', 'pheno2', 'c_hat', 'lambda', 'pvalue', 'gene','n_var')
+  beta <- data.frame(b1 = t(b1_hat), b2 = t(b2_hat), AF = c(diag(A))) %>% 
+    mutate(pheno1 = pheno1, pheno2  = pheno2)
+  # return(list(results = results, beta = beta))
+  return(results)
+}
+```
+
+```{r}
+# source('~/Dropbox (Partners HealthCare)/ukbb_exomes_pleiotropy/R/simulations.R')
+single_alb_test <- function(data, max_AF, annt, pheno_corr){ # 0.51367
+  result = data %>%
+    mutate(AF = pop_AF) %>%
+    filter((AF< max_AF)) %>%
+    filter(annotation == annt) %>%
+    single_test(. ,pheno_corr = pheno_corr, pheno1 = 'beta_30600', pheno2 = 'beta_30680',
+                n_ind=426056, gene='ALB', sig_level = 0.05)
+  return(as.numeric(result$pvalue))
+}
+ 
+```
+
+
+```{r}
+single_alb_test(alb_wide, 1e-4, 'pLoF')
+single_alb_test(alb_wide, 1e-4, 'Missense')
+single_alb_test(alb_wide, 1e-4, 'Synonymous')
+```
+
+```{r}
+single_alb_test(alb_wide, 1, 'pLoF')
+single_alb_test(alb_wide, 1, 'Missense')
+single_alb_test(alb_wide, 1, 'Synonymous')
+```
+
+```{r}
+pvalue <- c()
+for(annt in c('pLoF', 'Missense', 'Synonymous')){
+  for(r in seq(0, 1, 0.1)){
+    print(r)
+    print(annt)
+    pvalue <- c(pvalue, single_alb_test(alb_wide, 1e-4, annt, r))
+  }
+}
+d1 <- data.frame(annotation = rep(c('pLoF', 'Missense', 'Synonymous'), each = 11),
+                 r = rep(seq(0, 1, 0.1), 3),
+                 pvalue=pvalue)
+pvalue <- c()
+for(annt in c('pLoF', 'Missense', 'Synonymous')){
+  for(r in seq(0, 1, 0.1)){
+    print(r)
+    print(annt)
+    pvalue <- c(pvalue, single_alb_test(alb_wide, 1e-2, annt, r))
+  }
+}
+d2 <- data.frame(annotation = rep(c('pLoF', 'Missense', 'Synonymous'), each = 11),
+                 r = rep(seq(0, 1, 0.1), 3),
+                 pvalue=pvalue)
+pvalue <- c()
+for(annt in c('pLoF', 'Missense', 'Synonymous')){
+  for(r in seq(0, 1, 0.1)){
+    print(r)
+    print(annt)
+    pvalue <- c(pvalue, single_alb_test(alb_wide, 1, annt, r))
+  }
+}
+d3 <- data.frame(annotation = rep(c('pLoF', 'Missense', 'Synonymous'), each = 11),
+                 r = rep(seq(0, 1, 0.1), 3),
+                 pvalue=pvalue)
+pvalue <- c()
+for(annt in c('pLoF', 'Missense', 'Synonymous')){
+  for(r in seq(0, 1, 0.1)){
+    print(r)
+    print(annt)
+    pvalue <- c(pvalue, single_alb_test(alb_wide, 2e-6, annt, r))
+  }
+}
+d4 <- data.frame(annotation = rep(c('pLoF', 'Missense', 'Synonymous'), each = 11),
+                 r = rep(seq(0, 1, 0.1), 3),
+                 pvalue=pvalue)
+
+d <- rbind(d1, d2, d3, d4) %>% 
+  mutate(AF_filter = rep(c('AF < 0.0001', 'AF < 0.01', 'All', 'Singletons'), each=33)) %>%
+  mutate(AF_filter = factor(AF_filter, levels = c('Singletons', 'AF < 0.0001', 'AF < 0.01', 'All')))
+```
+
+```{r}
+figure = d %>% 
+  filter(AF_filter == 'AF < 0.0001') %>%
+  ggplot + aes(x = r, y = -log10(pvalue), color = annotation) +
+  geom_point() + geom_vline(xintercept = 0.51367,lty=2) + 
+  geom_hline(yintercept = -log10(0.05), lty=2, color = 'red') +
+  labs(x = 'phenotype correlation', y = '-log10(P)') +
+  annotation_color_scale + annotation_fill_scale + themes + theme_classic() +
+  theme(legend.position = 'top') + 
+  facet_grid(~AF_filter)
+```
+
+```{r}
+png(paste0(figure_path, 'alb_albumin_calcium_400k_alter_pheno_corr_single_panel.png'), height = 3, width = 4, units = 'in', res = 300)
+print(figure)
+dev.off()
+```
+
+```{r}
+tet2 <- read_tsv('~/Downloads/tet2_lof_variant_check.tsv')
+```
+```{r}
+tet2_df <- data.frame(str_split(tet2$markerIDs, ';')) 
+colnames(tet2_df)[1] <- 'variants'
+tet2_df <- tet2_df %>%
+  mutate(chrom = str_split(variants, ':') %>% map_chr(., 1),
+         position = str_split(variants, ':') %>% map_chr(., 2)) %>%
+  mutate(pos = str_split(position, '_') %>% map_chr(., 1), 
+         allele = str_split(position, '_') %>% map_chr(., 2),
+         y=1
+         ) %>%
+  select(-position, -variants)
+```
+
+```{r}
+tet2_df %>%
+  ggplot2 + aes(x = pos) +geom_histogram(stat='count') + themes + theme_classic()
+```
+```{r}
+write.csv(tet2_df, '~/Desktop/tet2_lof_vars.csv')
+```
+
+```{r}
+pheno_point_check <- read.csv(paste0(data_path, 'gene_point_check.csv'), sep = ',') %>% 
+  select(7:11, 14) %>%
+  distinct()
+new_results_500k <- results_500k %>%
+  merge(., pheno_point_check, by.x = c('pheno1', 'description1'), by.y = c('phenocode', 'description'))%>%
+  merge(., pheno_point_check, by.x = c('pheno2', 'description2'), by.y = c('phenocode', 'description'))
+```
+
+```{r}
+phenos <- new_results_500k %>% 
+  select(pheno = pheno1, description = description1) %>%
+  rbind(., new_results_500k %>% 
+  select(pheno = pheno2, description = description2 )) %>%
+  distinct()
+
+```
+
+
+
+```{r}
+p <- results_500k %>%
+  mutate(annotation = factor(annotation, levels = annotation_types)) %>%
+  # filter(annotation == 'missense|LC') %>%
+  # mutate(mean_burden_p = (burden_pvalue1 + burden_pvalue2)/2) %>%
+  ggplot + 
+  aes(x = corr, y = -log10(pvalue), color = annotation, size = n_var) +
+  labs(x = 'phenotypic correlation', y = '-log10(p)', size = 'Number of variants', color = 'Annotation') +
+  geom_point(alpha = 0.5) +
+  annotation_color_scale + 
+  # scale_y_log10() + 
+  geom_hline(yintercept = -log10(0.05), lty = 2) + 
+  # geom_vline(xintercept = c(-0.1, 0.1, 0.8, 1), lty = 2) + 
+  scale_size_continuous(range = c(0.01, 4)) + 
+  facet_grid(~annotation, labeller = labeller(annotation = annotation_names)) + themes + theme(legend.position = 'right')
+png(paste0(figure_path, "final_test_results_on_curated_phenotypes_p_vs_phenocorr.png"), width=10, height=3, units = 'in', res = 300)
+print(p)
+dev.off()
+```
+
+```{r}
+new_results_500k %>%
+
+  mutate(annotation = factor(annotation, labels = annotation_types)) %>%
+  mutate(mean_burden_p = (burden_pvalue1 + burden_pvalue2)/2) %>%
+  ggplot + 
+  aes(x = n_var, y = -log10(pvalue), color = annotation, size = -log10(mean_burden_p)) +
+  labs(x = 'Number of variants', y = '-log10(p)', size = '-log10(mean(burden pvalues))', color = 'Annotation') +
+  geom_point(alpha = 0.5) +
+  annotation_color_scale + 
+  scale_x_log10() + 
+  geom_hline(yintercept = -log10(0.05), lty = 2) + 
+  scale_size_continuous(range = c(0.01, 4)) + 
+  facet_grid(~annotation, labeller = labeller(annotation = annotation_names), scale = 'free') + themes
+  
+```
+
+
+```{r}
+results_500k %>%
+
+  mutate(annotation = factor(annotation, levels = annotation_types)) %>%
+  mutate(mean_burden_p = (burden_pvalue1 + burden_pvalue2)/2) %>%
+  ggplot + 
+  aes(x = n_var, y = -log10(pvalue), color = annotation, size = -log10(mean_burden_p)) +
+  labs(x = 'Number of variants', y = '-log10(p)', size = '-log10(mean(burden pvalues))', color = 'Annotation') +
+  geom_point(alpha = 0.5) +
+  annotation_color_scale + 
+  # scale_x_log10() + 
+  geom_hline(yintercept = -log10(0.05), lty = 2) + 
+  scale_size_continuous(range = c(0.01, 4)) + 
+  facet_grid(~annotation, labeller = labeller(annotation = annotation_names), scale = 'free') + themes
+  
+```
+
+```{r}
+p <- results_500k %>%
+
+  mutate(annotation = factor(annotation, levels = annotation_types)) %>%
+  mutate(mean_burden_p = (burden_pvalue1 + burden_pvalue2)/2) %>%
+  ggplot + 
+  aes(x = n_var, y = -log10(pvalue), color = annotation, size = -log10(mean_burden_p)) +
+  labs(x = 'Number of variants', y = '-log10(p)', size = '-log10(mean(burden pvalues))', color = 'Annotation') +
+  geom_point(alpha = 0.5) +
+  annotation_color_scale + 
+  scale_x_log10() + 
+  geom_hline(yintercept = -log10(0.05), lty = 2) + 
+  scale_size_continuous(range = c(0.01, 4)) + 
+  facet_grid(~annotation, labeller = labeller(annotation = annotation_names), scale = 'free') + themes + theme(legend.position = 'right')
+png(paste0(figure_path, "final_test_results_on_curated_phenotypes_p_vs_n_var.png"), width=10, height=3, units = 'in', res = 300)
+print(p)
+dev.off()
+```
+
+## Protein-protein interaction information
+```{r}
+# if (!require("BiocManager", quietly = TRUE))
+#     install.packages("BiocManager")
+# 
+# BiocManager::install("STRINGdb")
+# 
+# ## Requirements
+# packages = c('gplots', 'hash', 'sqldf', 'plotrix')
+# 
+# for(p in packages){
+#   if(!require(p, character.only = T)){
+#     install.packages(p)
+#   }
+# }
+library(STRINGdb)
+library(tidygraph)
+tmp_dir = "./tmpStringDB"
+suppressWarnings(dir.create(tmp_dir))
+produce_stats <- function(net, measures = NA, quickrun = T, runsilent = F){
+  #Stats for the network, can supply list of igraph or tidygraph functions to run
+  if(all(is.na(measures))){
+    measures <- c('centrality_degree()',
+                  'centrality_betweenness()',
+                  'centrality_closeness()',
+                  'centrality_eigen()',
+                  'centrality_hub()')
+    if(!quickrun){
+      #These take some time - so only run if specifically asked for
+      measures <- c(measures,
+                    'centrality_katz()',
+                    'centrality_pagerank()',
+                    'centrality_random_walk()',
+                    'centrality_power()',
+                    'centrality_alpha()')
+    }
+  }
+  name <- gsub("\\(.*\\)",'', measures)
+  
+  for(i in 1:length(measures)){
+    if(!runsilent){
+      cat('Working on ', name[i] ,'...\n')
+    }
+    tryCatch(
+      net %<>% activate(nodes) %>%
+        dplyr::mutate(!!name[i] := !!parse_expr(measures[[i]])),
+      error=function(e) {
+        message(e, '\n')
+        return(paste0(measures[i], ' failed'))
+      })
+  }
+  return(net)
+}
+```
+```{r}
+data <- read.csv(paste0(data_path, 'gene_phewas_burden_sig_count.csv'), sep = '\t')
+```
+
+```{r}
+string_db <- STRINGdb$new(version="11.5",
+                          species=9606,
+                          score_threshold=0,
+                          input_directory=tmp_dir)
+```
+
+```{r}
+gene_data_map = data %>% 
+  as.data.frame %>% #function doesn't work with tibbles
+  string_db$map('gene_symbol', removeUnmappedRows = F) %>%
+  as_tibble()
+```
+
+```{r}
+ints <- string_db$get_interactions(gene_data_map$STRING_id) %>% 
+  dplyr::select(from, to, combined_score) %>% 
+  as_tibble()
+```
+
+
+```{r}
+# Subset to high confidence
+ints.hc <- ints %>%
+  dplyr::filter(combined_score >= 700)
+# Init net
+net <- as_tbl_graph(ints.hc)
+
+#Stats
+net %<>% produce_stats() 
+# Multiple components, reduce to largest and rerun stats. 
+net <- to_components(net)[[1]]
+```
+
+
+
+
+```{r}
+net %<>% produce_stats() %>%
+  dplyr::mutate(unweighted_degree = centrality_degree(),
+         local_transitivity = local_transitivity())
+nds <- net %N>% as_tibble 
+nds <- nds %>% left_join(gene_data_map, by=c('name' = 'STRING_id')) %>%
+  dplyr::select(name, gene_symbol, tidyselect::everything())
+```
+
+```{r}
+get_pvalue_bins <- function(pvalue){
+  bins = case_when(
+    # pvalue <= 1e-10  ~ '[0, 1e-10]', 
+    # pvalue <= 1e-8  ~ '[0, 1e-8]', 
+    pvalue <= 1e-6  ~ '[0, 1e-6]', 
+    pvalue <= 1e-4  ~ '(1e-6, 1e-4]', 
+    pvalue <= 1e-2  ~ '(1e-4, 1e-2]', 
+    pvalue <= 5e-2  ~ '(0.01, 0.05]',
+    pvalue <= 1e-1  ~ '(0.05, 0.1]',
+    pvalue > 1e-1  ~ '(0.1, )', 
+  )
+  return(bins)
+}
+nds %>%
+  mutate(group = factor(get_pvalue_bins(pvalue), levels = c('[0, 1e-10]', '[0, 1e-8]', '(1e-8, 1e-6]', '[0, 1e-6]', '(1e-6, 1e-4]', '(1e-4, 1e-2]', '(0.01, 0.05]', '(0.05, 0.1]', '(0.1, )', '(0.05, )'))) %>%
+  # mutate(group = pvalue < 0.05) %>%
+  group_by(group, annotation) %>%
+  dplyr::summarize(Mean = mean(centrality_degree, na.rm = T),
+            SD = sd(centrality_degree, na.rm = T),
+            total= n()) %>%
+  ggplot + aes(x = group, y = Mean, 
+                 ymin = Mean - 1.96 * SD / sqrt(total), 
+                 ymax = Mean + 1.96 * SD / sqrt(total),
+               color = annotation) +
+  labs(x = 'Pvalue bins', y = 'Mean number of\nprotein-protein interactions') + 
+    # geom_point(color = color_lof) +
+    geom_pointrange() + annotation_color_scale +
+    geom_text_repel(aes(label=total)) + theme(legend.position = 'top')
+```
+
+
+
+
+```{r}
+load_degree_data = function(gene_data, gene_field) {
+  tmp_dir = "./tmpStringDB"
+  suppressWarnings(dir.create(tmp_dir))
+  string_db <- STRINGdb$new(version="11.5",
+                            species=9606,
+                            score_threshold=0,
+                            input_directory=tmp_dir)
+  
+  # Wrangling -----------------------------------------------------------------
+  gene_data_map = gene_data %>% 
+    as.data.frame %>% #function doesn't work with tibbles
+    string_db$map(gene_field, removeUnmappedRows = F) %>%
+    as_tibble()
+  
+  ints <- string_db$get_interactions(gene_data_map$STRING_id) %>% 
+    dplyr::select(from, to, combined_score) %>% 
+    as_tibble()
+  
+  # Subset to high confidence
+  ints.hc <- ints %>%
+    filter(combined_score >= 700)
+  # Init net
+  net <- tidygraph::as_tbl_graph(ints.hc)
+  
+  #Stats
+  net %<>% produce_stats() 
+  # Multiple components, reduce to largest and rerun stats. 
+  net <- to_components(net)[[1]]
+  net %<>% produce_stats() %>%
+    dplyr::mutate(unweighted_degree = centrality_degree(),
+           local_transitivity = local_transitivity())
+  
+  nds <- net %N>% as_tibble 
+  nds %>% left_join(gene_data_map, by=c('name' = 'STRING_id')) %>%
+    dplyr::select(name, gene_field, tidyselect::everything()) %>%
+    return
+}
+```
+
+```{r}
+degree_data <- load_degree_data(results_500k, 'gene')
+```
+
+
+```{r}
+sig_degree_data <- load_degree_data(data, 'gene_symbol')
+```
+
+
+```{r}
+get_pvalue_bins <- function(pvalue){
+  bins = case_when(
+    # pvalue <= 1e-10  ~ '[0, 1e-10]', 
+    # pvalue <= 1e-8  ~ '[0, 1e-8]', 
+    # pvalue <= 1e-6  ~ '[0, 1e-6]', 
+    # pvalue <= 1e-4  ~ '(1e-6, 1e-4]', 
+    # pvalue <= 1e-2  ~ '(1e-4, 1e-2]', 
+    pvalue <= 5e-2  ~ '[0, 0.05]',
+    # pvalue <= 1e-1  ~ '(0.05, 0.1]',
+    pvalue > 5e-2  ~ '(0.05, )', 
+  )
+  return(bins)
+}
+
+get_annt_group_label <- function(ind){
+label = case_when(
+    ind == 1  ~ 'pLoF',
+    ind == 2  ~ 'Mis',
+    ind == 4  ~ 'Syn',
+    ind == 3  ~ 'pLoF + Mis',
+    ind == 5  ~ 'pLoF + Syn',
+    ind == 6  ~ 'Mis + Syn',
+    ind == 7  ~ 'ALL',
+  )
+  return(label)
+}
+
+a <- degree_data %>%
+  filter(!duplicated(degree_data[,c('gene','annotation', 'pheno1', 'pheno2')]))
+
+mean_data <- a %>%
+  group_by(annotation) %>%
+  dplyr::summarize(annt_mean=mean(centrality_degree))
+a<- a %>%
+  dplyr::mutate(group = factor(get_pvalue_bins(pvalue), levels = c('[0, 1e-10]', '[0, 1e-8]',  '[0, 0.05]', '(1e-8, 1e-6]', '[0, 1e-6]', '(1e-6, 0.05]', '(1e-6, 1e-4]', '(1e-4, 1e-2]', '(0.01, 0.05]', '(0.05, 0.1]', '(0.1, )', '(0.05, )', '(1e-6, )'))) %>%
+  filter(group == '[0, 1e-6]') %>%
+  dplyr::mutate(annt_ind = if_else(annotation == 'pLoF', 1, if_else(annotation == 'missense|LC', 2, 4))) %>%
+  group_by(gene, pheno1, pheno2) %>%
+  dplyr::mutate(sum_ind = sum(annt_ind), 
+                annt_n = n(),
+  group = factor(get_pvalue_bins(pvalue), levels = c('[0, 1e-10]', '[0, 1e-8]',  '[0, 0.05]', '(1e-8, 1e-6]', '[0, 1e-6]', '(1e-6, 0.05]', '(1e-6, 1e-4]', '(1e-4, 1e-2]', '(0.01, 0.05]', '(0.05, 0.1]', '(0.1, )', '(0.05, )', '(1e-6, )'))) %>%
+  dplyr::mutate(label = factor(get_annt_group_label(sum_ind), levels = c('pLoF', 'Mis', 'Syn', 'pLoF + Mis', 'pLoF + Syn', 'Mis + Syn', 'ALL'))) %>%
+  # mutate(group = pvalue < 0.05) %>%
+  group_by(group, annotation, label) %>%
+  dplyr::summarize(Mean = mean(centrality_degree, na.rm = T),
+            SD = sd(centrality_degree, na.rm = T),
+            total= n()) 
+a %>%
+  ggplot + aes(x = label, y = Mean, 
+                 ymin = Mean - 1.96 * SD / sqrt(total), 
+                 ymax = Mean + 1.96 * SD / sqrt(total),
+               color = annotation, group= label) +
+  labs(x = 'Pvalue bins', y = 'Mean number of\nprotein-protein interactions') + 
+    # geom_point(color = color_lof) +
+    geom_pointrange() + annotation_color_scale +
+    # geom_hline(data = mean_data, aes(yintercept=annt_mean, color=annotation), lty=2) +
+    geom_text_repel(aes(label=total)) + theme(legend.position = 'top') +
+  facet_grid(~group)
+```
+
+
+```{r}
+get_pvalue_bins <- function(pvalue){
+  bins = case_when(
+    # pvalue <= 1e-10  ~ '[0, 1e-10]', 
+    # pvalue <= 1e-8  ~ '[0, 1e-8]', 
+    pvalue <= 1e-6  ~ '[0, 1e-6]', 
+    # pvalue <= 1e-4  ~ '(1e-6, 1e-4]', 
+    # pvalue <= 1e-2  ~ '(1e-4, 1e-2]', 
+    # pvalue <= 5e-2  ~ '[0, 0.05]',
+    # pvalue <= 1e-1  ~ '(0.05, 0.1]',
+    pvalue > 1e-6  ~ '(1e-6, )', 
+  )
+  return(bins)
+}
+a <- degree_data %>%
+  filter(!duplicated(degree_data[,c('gene','annotation', 'pheno1', 'pheno2')]))
+mean_data <- a %>%
+  group_by(annotation) %>%
+  dplyr::summarize(annt_mean=mean(centrality_degree))
+a<- a %>%
+  dplyr::mutate(
+  group = factor(get_pvalue_bins(pvalue), levels = c('[0, 1e-10]', '[0, 1e-8]',  '[0, 0.05]', '(1e-8, 1e-6]', '[0, 1e-6]', '(1e-6, 0.05]', '(1e-6, 1e-4]', '(1e-4, 1e-2]', '(0.01, 0.05]', '(0.05, 0.1]', '(0.1, )', '(0.05, )', '(1e-6, )'))) %>%
+  # mutate(group = pvalue < 0.05) %>%
+  group_by(group, annotation) %>%
+  dplyr::summarize(Mean = mean(centrality_degree, na.rm = T),
+            SD = sd(centrality_degree, na.rm = T),
+            total= n()) 
+a %>%
+  ggplot + aes(x = group, y = Mean, 
+                 ymin = Mean - 1.96 * SD / sqrt(total), 
+                 ymax = Mean + 1.96 * SD / sqrt(total),
+               color = annotation) +
+  labs(x = 'Pvalue bins', y = 'Mean number of\nprotein-protein interactions') + 
+    # geom_point(color = color_lof) +
+    geom_pointrange() + annotation_color_scale +
+    geom_hline(data = mean_data, aes(yintercept=annt_mean, color=annotation), lty=2) +
+    geom_text_repel(aes(label=total)) + theme(legend.position = 'top') 
+```
+
+```{r}
+label_type = labeller(trait_type2 = trait_type_names, annotation = annotation_names2, result_type = result_names, 
+                      CAF_range = caf_names, AF_range = af_names, ac_type = ac_names, gene_set_name = gene_list_names)
+```
+
+
+
+```{r}
+# mean_data <- sig_degree_data %>%
+#     select(gene_symbol, annotation, CAF, centrality_degree) %>%
+#     distinct() %>%
+#     mutate(annotation = factor(annotation, levels=annotation_types2)) %>%
+#   group_by(annotation) %>%
+#   dplyr::summarize(annt_mean=mean(centrality_degree))
+p <- nds %>%
+    select(gene_symbol, annotation, CAF, centrality_degree, n_phewas_sig) %>%
+    distinct() %>%
+  # mutate(group = pvalue < 0.05) %>%
+  dplyr::mutate(group = factor(if_else(n_phewas_sig > 1, '>1', as.character(n_phewas_sig)), levels=c('0', '1', '>1')),
+         annotation = factor(annotation, levels=annotation_types2)) %>%
+  dplyr::group_by(group, annotation) %>%
+  dplyr::summarize(Mean = mean(centrality_degree, na.rm = T),
+            SD = sd(centrality_degree, na.rm = T),
+            total= n()) %>%
+  ggplot + aes(x = group, y = Mean, 
+                 ymin = Mean - 1.96 * SD / sqrt(total),
+                 ymax = Mean + 1.96 * SD / sqrt(total),
+               color = annotation) +
+  labs(x = 'Pleiotropy: Number of associations', y = 'Mean number of\nprotein-protein interactions') + 
+    # geom_point(color = color_lof) +
+    geom_pointrange() + 
+    annotation_color_scale2 +
+  # scale_y_log10() +
+  geom_text_repel(aes(label=total)) +
+  facet_grid(~annotation, labeller = label_type)
+# +
+#     geom_text_repel(aes(label=total)) + theme(legend.position = 'top')
+
+png(paste0(figure_path, 'protein_protein_interaction_with_n_phewas_sinals.png'), height = 4, width = 7.5, units = 'in', res = 300)
+print(p)
+dev.off()
+```
+

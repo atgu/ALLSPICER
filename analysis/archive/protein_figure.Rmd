@@ -1,0 +1,294 @@
+---
+title: "Pleiotropy Protein figure"
+output: html_document
+date: "2023-10-04"
+---
+
+```{r}
+path <- '~/Downloads/alpl_var_hgvsp_500k.txt.bgz'
+```
+
+```{r}
+data <- read_delim(path, delim='\t', col_types = cols(phenocode = col_character()))
+```
+
+# Data processing
+```{r}
+protein_data <- data %>%
+  filter(!is.na(hgvsp)) %>%
+  mutate(protein = str_split(hgvsp, ':') %>% map_chr(., 2)) %>%
+  mutate(mutation = str_split(protein, '\\.') %>% map_chr(., 2)) %>%
+  filter(nchar(mutation)<10) %>%
+  mutate(amino_acid1 = mutation %>% str_sub(., 1, 3),
+         position = mutation %>% str_extract(., "[[:digit:]]+"),
+         amino_acid2 = mutation %>% str_sub(., -3, -1),) %>% 
+  pivot_wider(id_cols = c('locus', 'alleles', 'AC', 'AF', 'gene', 'annotation', 'hgvsp', 'protein', 'mutation',  "amino_acid1", "position", "amino_acid2"), values_from = 'BETA', names_from = 'phenocode')
+res <- as.numeric(unique(data$position))
+```
+
+```{r}
+phenocodes <- data %>%
+  select(phenocode) %>%
+  distinct() %>%
+  unlist()
+phenonames <- c('Alkaline phosphatase', 'Calcium', 'C-reactive protein', 'Phosphate')
+names(phenonames) = phenocodes
+```
+
+
+```{r}
+summary(protein_data[, 13:16])
+```
+
+
+
+```{r}
+color_beta <- function(data, phenocode){
+  data <- data %>%
+    select(1:12, BETA = phenocode) %>%
+    mutate(color = case_when(
+    BETA <= -2.5 ~ '#458cff',
+    BETA <= -2 ~ '#5da1ff',
+    BETA <= -1.5 ~ '#75b7ff', 
+    BETA <= -1 ~ '#8eccff',
+    BETA <= -0.5 ~ '#a6e2ff',
+    BETA <= 0 ~ '#bef7ff',
+    BETA <= 0.5 ~ '#f4ffa3', 
+    BETA <= 1 ~ '#f8e583', 
+    BETA <= 1.5 ~ '#fbcb62', 
+    BETA > 1.5 ~  '#ffb142'
+  )) 
+  return(data)
+}
+add_color_layer <- function(data, colorcode){
+  m_set_style(
+    sel = m_sel(resi = as.numeric(unlist(unique(data %>% filter(color == colorcode) %>% select(position))))),
+    style = m_style_cartoon(color = colorcode,  arrows = F)
+  )
+}
+```
+
+
+# 3D protein figure
+```{r}
+plot_3d_protein <- function(data, phenocode, annotation, protein_pdb_code){
+  colored_data <- color_beta(data, phenocode) 
+  if(!is.null(annotation)){
+    colored_data <- colored_data %>%
+      filter(annotation == annotation)
+  }
+  # protein 3d plot
+  r3dmol(
+    viewer_spec = m_viewer_spec(
+      cartoonQuality = 10,
+      lowerZoomLimit = 50,
+      upperZoomLimit = 350
+    ),
+    id = "demo",
+    elementId = "demo"
+  ) %>%
+    # Add model to scene
+    m_add_model(data =m_fetch_pdb(protein_pdb_code), format = "pdb") %>%
+    # Zoom to encompass the whole scene
+    m_zoom_to() %>%
+    # Set style of structures
+    m_set_style(style = m_style_cartoon(color = "#EBEBEB")) %>%
+    m_set_style(
+      sel = m_sel(resi = as.numeric(unlist(unique(colored_data %>% filter(color == '#458cff') %>% select(position))))),
+      style = m_style_cartoon(color = "#458cff",  arrows = F)
+    ) %>%
+    m_set_style(
+      sel = m_sel(resi = as.numeric(unlist(unique(colored_data %>% filter(color == '#5da1ff') %>% select(position))))),
+      style = m_style_cartoon(color = "#5da1ff",  arrows = F)
+    ) %>%
+    m_set_style(
+      sel = m_sel(resi = as.numeric(unlist(unique(colored_data %>% filter(color == '#75b7ff') %>% select(position))))),
+      style = m_style_cartoon(color = "#75b7ff",  arrows = F)
+    ) %>%
+    m_set_style(
+      sel = m_sel(resi = as.numeric(unlist(unique(colored_data %>% filter(color == '#8eccff') %>% select(position))))),
+      style = m_style_cartoon(color = "#8eccff",  arrows = F)
+    ) %>%
+    m_set_style(
+      sel = m_sel(resi = as.numeric(unlist(unique(colored_data %>% filter(color == '#a6e2ff') %>% select(position))))),
+      style = m_style_cartoon(color = "#a6e2ff",  arrows = F)
+    ) %>%
+    m_set_style(
+      sel = m_sel(resi = as.numeric(unlist(unique(colored_data %>% filter(color == '#bef7ff') %>% select(position))))),
+      style = m_style_cartoon(color = "#bef7ff",  arrows = F)
+    ) %>%
+    m_set_style(
+      sel = m_sel(resi = as.numeric(unlist(unique(colored_data %>% filter(color == '#f4ffa3') %>% select(position))))),
+      style = m_style_cartoon(color = "#f4ffa3",  arrows = F)
+    ) %>%
+    m_set_style(
+      sel = m_sel(resi = as.numeric(unlist(unique(colored_data %>% filter(color == '#f8e583') %>% select(position))))),
+      style = m_style_cartoon(color = "#f8e583",  arrows = F)
+    ) %>%
+    m_set_style(
+      sel = m_sel(resi = as.numeric(unlist(unique(colored_data %>% filter(color == '#fbcb62') %>% select(position))))),
+      style = m_style_cartoon(color = "#fbcb62",  arrows = F)
+    ) %>%
+    m_set_style(
+      sel = m_sel(resi = as.numeric(unlist(unique(colored_data %>% filter(color == '#ffb142') %>% select(position))))),
+      style = m_style_cartoon(color = "#ffb142",  arrows = F)
+    ) %>%
+    # Rotate the scene by given angle on given axis
+    m_rotate(angle = 90, axis = "y") %>%
+    # Animate the scene by spinning it
+    m_spin()
+}
+```
+
+```{r}
+# Protein: alkaline phosphatase
+phenocode = '30610'
+print(phenonames[phenocode])
+plot_3d_protein(protein_data, phenocode, 'missense', '1ani')
+```
+
+```{r}
+# Protein: alkaline phosphatase
+phenocode = '30680'
+print(phenonames[phenocode])
+plot_3d_protein(protein_data, phenocode, 'missense', '1ani')
+```
+
+```{r}
+# Protein: alkaline phosphatase
+phenocode = '30710'
+print(phenonames[phenocode])
+plot_3d_protein(protein_data, phenocode, 'missense', '1ani')
+```
+
+```{r}
+# Protein: alkaline phosphatase
+phenocode = '30810'
+print(phenonames[phenocode])
+plot_3d_protein(protein_data, phenocode, 'missense', '1ani')
+```
+
+# Protein Domain figure
+```{r}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+protein_domain_data <- data %>%
+  filter(!is.na(hgvsp)) %>%
+  mutate(protein = str_split(hgvsp, ':') %>% map_chr(., 2)) %>%
+  mutate(mutation = str_split(protein, '\\.') %>% map_chr(., 2)) %>%
+  filter(nchar(mutation)<10) %>%
+  mutate(amino_acid1 = mutation %>% str_sub(., 1, 3),
+         position = mutation %>% str_extract(., "[[:digit:]]+"),
+         amino_acid2 = mutation %>% str_sub(., -3, -1),) 
+```
+
+```{r}
+# BiocManager::install("drawProteins")
+# library(drawProteins)
+# rel_json <- drawProteins::get_features("P05186") 
+# rel_data <- drawProteins::feature_to_dataframe(rel_json)
+# p <- drawProteins::draw_canvas(rel_data) 
+# p <- drawProteins::draw_chains(p, rel_data)
+# p <- drawProteins::draw_domains(p, rel_data)
+# p <- drawProteins::draw_regions(p, rel_data) # adds activation domain
+# p <- drawProteins::draw_repeat(p, rel_data)
+# p <- drawProteins::draw_motif(p, rel_data) # adds 9aa Transactivation domain & NLS
+# p <- drawProteins::draw_phospho(p, rel_data, size = 4) # add phosphorylation sites from Uniprot
+# p <- p + 
+p <- protein_domain_data %>% 
+  filter(annotation != 'pLoF') %>%
+  mutate(annotation = if_else(annotation == 'missense', 'missense|LC', annotation)) %>%
+  mutate(annotation = factor(annotation, levels=annotation_types, labels=annotation_names)) %>%
+  ggplot +
+  aes(x = as.numeric(position), y = BETA+1, color = phenocode) +
+  geom_point(aes(size = -log10(Pvalue)),position = position_jitter(), alpha=0.5) + 
+  geom_hline(yintercept = 1, lty=2) + 
+  labs(x = 'Amino Acid Position', y = 'Effect Size', color = NULL)+
+  geom_smooth(alpha = 0.5, fill=NA) +
+  theme_classic() +
+  scale_y_continuous(breaks = c(-3,-1, 1, 3, 5), labels = c(-4, -2, 0, 2,4)) +
+  scale_color_brewer(palette = 'Dark2', breaks = phenocodes, labels=phenonames) +
+  scale_fill_brewer(palette = 'Set3') +
+  scale_size_continuous(range = c(2,5), breaks = c(5, 10, 100, 200), guide = NULL) +
+  theme_classic() +
+  themes + 
+  theme(panel.grid.minor=element_blank(), 
+        panel.grid.major=element_blank(),
+        legend.position = 'top', 
+        legend.direction = 'horizontal',
+        # legend.box = "horizontal", 
+        legend.title = element_blank(), 
+        legend.background = element_blank()
+        ) +
+  # theme(axis.ticks = element_blank(), 
+  #       axis.text.y = element_blank()) +
+  theme(panel.border = element_blank()) +
+  facet_wrap(~annotation, ncol = 1)
+p
+```
+
+```{r}
+
+png(paste0("~/Desktop/ALPL_amino_acid.png"), width=7.5, height=6, units = 'in', res = 300)
+print(p)
+dev.off()
+```
+## phenotypic correlation
+```{r}
+results_500k %>%
+  filter(gene == 'ALPL') %>%
+  select(description1=description2, description2=description1, corr) %>%
+  distinct() %>%
+  rbind(., results_500k %>%
+  filter(gene == 'ALPL') %>%
+  select(description1, description2, corr) %>%
+  distinct()) %>%
+
+  ggplot() +
+  geom_tile(aes(x = description2, y = description1, fill = corr)) +
+  geom_text(aes(x = description2, y = description1, label = round(corr,2)), size=6) +
+  coord_equal() +
+  scale_fill_gradient2(mid="#FBFEF9",low="#0C6291",high="#A63446", limits=c(-0.3,0.3)) +
+  labs(x =NULL, y = NULL) + theme_classic() + 
+  theme(plot.margin = unit(c(1.5,1.5,1.5,1.5), "cm") )+
+  themes + 
+    theme_classic() +
+    theme(
+         axis.text.x = element_text(angle=20, vjust=1, hjust = 1),
+          axis.text = element_text(size = 13, family='Arial', face= 'bold', color='black'),
+          strip.text = element_text(size = 18, family='Arial', face = 'bold' ),
+          legend.title = element_text(size = 18, family='Arial'),
+          legend.text = element_text(size=15),
+          text = element_text(family='Arial'),
+          legend.position = 'right') 
+```
+
+
+```{r}
+results_500k %>%
+  filter(gene == 'APOB'  & pvalue < 2.5e-6) %>%
+  select(description1=description2, description2=description1, corr) %>%
+  distinct() %>%
+  rbind(., results_500k %>%
+  filter(gene == 'APOB'& pvalue < 2.5e-6) %>%
+  select(description1, description2, corr) %>%
+  distinct()) %>%
+
+  ggplot() +
+  geom_tile(aes(x = description2, y = description1, fill = corr)) +
+  geom_text(aes(x = description2, y = description1, label = round(corr,2)), size=4) +
+  coord_equal() +
+  scale_fill_gradient2(mid="#FBFEF9",low="#0C6291",high="#A63446", limits=c(-1,1)) +
+  labs(x =NULL, y = NULL) + theme_classic() + 
+  theme(plot.margin = unit(c(1.5,1.5,1.5,1.5), "cm") )+
+  themes + 
+    theme_classic() +
+    theme(
+         axis.text.x = element_text(angle=20, vjust=1, hjust = 1),
+          axis.text = element_text(size = 13, family='Arial', face= 'bold', color='black'),
+          strip.text = element_text(size = 18, family='Arial', face = 'bold' ),
+          legend.title = element_text(size = 18, family='Arial'),
+          legend.text = element_text(size=15),
+          text = element_text(family='Arial'),
+          legend.position = 'right') 
+```

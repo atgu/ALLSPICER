@@ -1,0 +1,555 @@
+---
+title: "Pleiotropy final figures"
+output: html_document
+date: "2023-06-15"
+---
+
+```{r}
+setwd('~/Dropbox (Partners HealthCare)/analysis/ukb_exomes_pleiotropy/')
+source('~/ukbb_exomes_pleiotropy/R/constants.R')
+```
+
+
+## Top triplet beta comparison
+```{r}
+# top_triplets <- results_500k %>% filter(pvalue < 1e-6)
+top_triplets <- read_delim(paste0(data_path, "top_significant_triplets.txt.bgz"), delim='\t', col_types = cols(phenocode = col_character())) %>% 
+  mutate(coding = if_else(is.na(coding), '', coding)) %>%
+  mutate(phenoname = paste0(trait_type, '_', phenocode, '_',  pheno_sex, '_',  coding, '_',  modifier)) %>%
+  mutate(BETA_adjusted = sqrt(2*AF*(1-AF))*BETA)
+```
+
+
+```{r}
+data <- top_triplets
+gene_name <- 'MC4R'
+pheno1 <- '23120'
+pheno1_name <- "Arm fat mass (right)"
+pheno2 <- '23128'
+pheno2_name <- "Trunk fat mass"
+annotation <- "missense"
+```
+
+```{r}
+figure_beta_triplets_gene_sig_only <- function(data, gene_name, phenocode1, phenocode2, pheno1_name, pheno2_name, annotations, save, start_pos, end_pos){
+sub_info <- data %>%
+  filter(gene == gene_name & phenoname %in% c(phenocode1, phenocode2))
+wide_info <- sub_info %>%
+    mutate(annotation = if_else(annotation %in% c('missense', 'LC'), 'missense|LC', annotation)) %>%
+    filter(annotation %in% annotations) %>%
+    mutate(
+      BETA_adjusted = sqrt(2*AF*(1-AF))*BETA
+    ) %>%
+  select(-Pvalue) %>%
+      pivot_wider(names_from = phenoname, names_prefix = 'beta_', values_from = BETA, id_cols = c('locus', 'alleles','AF', 'gene', 'annotation')) 
+pvalue_info <- sub_info %>%
+    mutate(annotation = if_else(annotation %in% c('missense', 'LC'), 'missense|LC', annotation)) %>%
+  select(locus, alleles, phenoname, gene, annotation, Pvalue, AF) %>%
+  group_by(locus, alleles, gene, annotation, AF) %>%
+  summarize(mean_p = mean(Pvalue)) %>%
+  merge(., wide_info, by= c('locus', 'alleles', 'gene', 'annotation', 'AF')) %>%
+  mutate(pos = as.numeric(str_split(locus, ':') %>% map_chr(.,2))) %>%
+  mutate(last_exon = pos <= end_pos & pos >= start_pos & annotation == 'pLoF') 
+text <- pvalue_info %>% filter(last_exon) %>%
+  mutate(annotation = factor(annotation, levels=annotation_types))
+figure <- pvalue_info %>%
+  mutate(annotation = factor(annotation, levels=annotation_types)) %>%
+  ggplot + 
+   aes(x=pvalue_info[,paste0('beta_',phenocode1)], y=pvalue_info[,paste0('beta_',phenocode2)], color = annotation, size = -log(mean_p))  +
+  # aes(x=sqrt(2*AF*(1-AF))*pvalue_info[,paste0('beta_',phenocode1)], y=sqrt(2*AF*(1-AF))*pvalue_info[,paste0('beta_',phenocode2)], color = annotation, size = -log(mean_p)) +
+  # labs(x=pheno1_name, y=pheno2_name, title =paste0(gene_name, '-', annotation) ) + 
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, lty=2) +
+  geom_vline(xintercept = 0, lty=2) +
+  geom_hline(yintercept = 0, lty=2) +
+  annotation_color_scale + annotation_fill_scale + themes + 
+  # labs(x=paste0(pheno1_name, '--', gene_name), y=pheno2_name, title = NULL) + 
+  labs(x=paste0(pheno1_name), y=pheno2_name, title = NULL) + 
+  geom_text_repel(data = raw_results_500k %>% filter(gene==gene_name & pheno1==phenocode1 & pheno2==phenocode2 & annotation %in% annotations) %>%
+  mutate(annotation = factor(annotation, levels=annotation_types)), aes(x=-Inf, y= Inf, label=formatC(pvalue, format = "e"), color=annotation, size =5))+
+  facet_wrap(~annotation, labeller = label_type, ncol = 1) +
+  geom_text_repel(data = text, aes(x=text[,paste0('beta_',phenocode1)], y=text[,paste0('beta_',phenocode2)], label = locus, color = annotation, size = 1)) +
+  guides(size = "none") +
+  theme(legend.position = 'top')
+if(save){
+  # png(paste0(figure_path, 'beta_figures/beta_figures_no_af_adjustment_gene_sig_only/',gene_name, '_', str_split(phenocode1, '_')[[1]][2], '_', str_split(phenocode2, '_')[[1]][2],'_1e_4.png'), height = 3, width = 3.5*length(annotations), units = 'in', res = 300)
+  png(paste0(figure_path, 'beta_figures/beta_figures_no_af_adjustment_gene_sig_only/',gene_name, '_', str_split(phenocode1, '_')[[1]][2], '_', str_split(phenocode2, '_')[[1]][2],'_1e_4.png'), width = 3.5, height = 3*length(annotations), units = 'in', res = 300)
+  print(figure)
+  dev.off()
+}
+return(figure)
+}
+```
+
+```{r}
+last_exon <- data.frame(
+  gene = c('ALB', 'APOB', 'ALPL', 'GFI1B', 'GMPR', 'HECTD4', 'IFRD2', 'IL17RA', 'IQGAP2', 'MC4R', 'PIEZO1', 'S1PR2', 'TET2', 'TUBB1'),
+  start = c(73421092, 21043864, 21577383, 132990872, 16295006, 112381952, 50292893, 17108307, 76707200, 60371062,88784901, 10231204, 105275048, 59023705),
+  end = c(73421412, 21044073, 21578412, 132991687, 16295549, 112382439, 50292918, 17115694, 76708132, 60372775, 88785220, 10231331, 105279816, 59023705)
+)
+```
+
+
+```{r}
+top_hits <- results_500k %>% filter(pvalue < 1e-6) 
+gene_annts <- top_hits %>% merge(., results_500k, by = colnames(results_500k)[c(1, 3:5, 7:9, 11)], suffixes = c('.x', '')) %>% select("gene", "annotation", "pheno1", "description1", "pheno2", "description2")
+for(i in 1:nrow(top_hits)){
+  tmp <- top_hits[i, ]
+  if(tmp[,'gene'] != 'ALPL') next
+  pos <- last_exon[last_exon$gene == tmp[,'gene'],]
+  annotations <- unlist(merge(tmp, gene_annts, by = c("gene", "pheno1", "description1", "pheno2", "description2"), suffixes = c('.x', '')) %>% select(annotation))
+  figure_beta_triplets_gene_sig_only(top_triplets  %>% filter(AF < 1e-4), tmp[,'gene'], tmp[,'pheno1'], tmp[,'pheno2'], tmp[,'description1'], tmp[,'description2'], annotations, save=T, unlist(pos$start), unlist(pos$end))
+}
+```
+
+```{r}
+figure_beta_triplets_all_annt <- function(data, gene_name, phenocode1, phenocode2, pheno1_name, pheno2_name, annotations, save){
+sub_info <- data %>%
+  filter(gene == gene_name & phenoname %in% c(phenocode1, phenocode2))
+wide_info <- sub_info %>%
+    mutate(annotation = if_else(annotation %in% c('missense', 'LC'), 'missense|LC', annotation)) %>%
+    filter(annotation %in% c('pLoF', 'missense|LC', 'synonymous')) %>%
+    mutate(
+      BETA_adjusted = sqrt(2*AF*(1-AF))*BETA
+    ) %>%
+  select(-Pvalue) %>%
+      pivot_wider(names_from = phenoname, names_prefix = 'beta_', values_from = BETA, id_cols = c('locus', 'alleles','AF', 'gene', 'annotation')) 
+pvalue_info <- sub_info %>%
+    mutate(annotation = if_else(annotation %in% c('missense', 'LC'), 'missense|LC', annotation)) %>%
+  select(locus, alleles, phenoname, gene, annotation, Pvalue, AF) %>%
+  group_by(locus, alleles, gene, annotation, AF) %>%
+  summarize(mean_p = mean(Pvalue)) %>%
+  merge(., wide_info, by= c('locus', 'alleles', 'gene', 'annotation', 'AF'))
+figure <- pvalue_info %>%
+  mutate(annotation = factor(annotation, levels=annotation_types)) %>%
+  ggplot + 
+   aes(x=pvalue_info[,paste0('beta_',phenocode1)], y=pvalue_info[,paste0('beta_',phenocode2)], color = annotation, size = -log(mean_p))  +
+  # aes(x=sqrt(2*AF*(1-AF))*pvalue_info[,paste0('beta_',phenocode1)], y=sqrt(2*AF*(1-AF))*pvalue_info[,paste0('beta_',phenocode2)], color = annotation, size = -log(mean_p)) +
+  # labs(x=pheno1_name, y=pheno2_name, title =paste0(gene_name, '-', annotation) ) + 
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, lty=2) +
+  annotation_color_scale + annotation_fill_scale + themes + 
+  labs(x=paste0(pheno1_name, '--', gene_name), y=pheno2_name, title = NULL) + 
+  geom_text_repel(data = raw_results_500k %>% filter(gene==gene_name & pheno1==phenocode1 & pheno2==phenocode2) %>%
+  mutate(annotation = factor(annotation, levels=annotation_types)), aes(x=-Inf, y= Inf, label=formatC(pvalue, format = "e"), color=annotation, size =5))+
+  facet_wrap(~annotation, labeller = label_type) +
+  guides(size = "none") +
+  theme(legend.position = 'right')
+if(save){
+  png(paste0(figure_path, 'beta_figures/beta_figures_no_af_adjustment/',gene_name, '_', str_split(phenocode1, '_')[[1]][2], '_', str_split(phenocode2, '_')[[1]][2],'_1e_4.png'), height = 3, width = 10, units = 'in', res = 300)
+  print(figure)
+  dev.off()
+}
+return(figure)
+}
+```
+
+```{r}
+top_hits <- results_500k %>% filter(pvalue < 1e-6) 
+gene_annts <- top_hits %>% merge(., results_500k, by = colnames(results_500k)[c(1, 3:5, 7:9, 11)], suffixes = c('.x', '')) %>% select("gene", "annotation", "pheno1", "description1", "pheno2", "description2")
+for(i in 1:nrow(top_hits)){
+  tmp <- top_hits[i, ]
+  # annotations <- unlist(merge(tmp, gene_annts, by = c("gene", "pheno1", "description1", "pheno2", "description2"), suffixes = c('.x', '')) %>% select(annotation))
+  figure_beta_triplets_all_annt(top_triplets  %>% filter(AF < 1e-4), tmp[,'gene'], tmp[,'pheno1'], tmp[,'pheno2'], tmp[,'description1'], tmp[,'description2'], annotations, save=T)
+}
+```
+
+```{r}
+good_examples <- data.frame(
+  gene = c('ALB', 'APOB', 'ALPL', 'TET2'),
+  annotation = c('missense|LC', 'pLoF', 'missense|LC', 'pLoF'),
+  pheno1 = c('continuous_30600_both_sexes__irnt', 'continuous_30640_both_sexes__irnt', 'continuous_30610_both_sexes__irnt', 'continuous_30140_both_sexes__irnt'),
+  pheno2 = c('continuous_30680_both_sexes__irnt', 'continuous_30870_both_sexes__irnt', 'continuous_30810_both_sexes__irnt', 'continuous_30190_both_sexes__irnt')
+)
+good_examples <-results_500k %>%
+  merge(., good_examples, by = c('gene', 'annotation', 'pheno1', 'pheno2'))
+```
+
+```{r}
+good_examples <- good_examples %>% filter(gene == 'ALB')
+for(i in 1:nrow(good_examples)){
+  tmp <- good_examples[i, ]
+  figure_beta_triplets(top_triplets %>% filter(AF < 1e-4), tmp[,'gene'], tmp[,'pheno1'], tmp[,'pheno2'], tmp[,'description1'], tmp[,'description2'], tmp[,'annotation'], save=T)
+}
+```
+
+
+# highlught variants
+```{r}
+# top_triplets <- results_500k %>% filter(pvalue < 1e-6)
+top_triplets <- read_delim("~/Downloads/top_significant_triplets.txt.bgz", delim='\t', col_types = cols(phenocode = col_character())) %>% 
+  mutate(coding = if_else(is.na(coding), '', coding)) %>%
+  mutate(phenoname = paste0(trait_type, '_', phenocode, '_',  pheno_sex, '_',  coding, '_',  modifier)) %>%
+  mutate(BETA_adjusted = sqrt(2*AF*(1-AF))*BETA)
+```
+
+```{r}
+view_triplet_beta <- function(data, gene_name, phenocode1, phenocode2){
+sub_info <- data %>%
+  filter(gene == gene_name & phenocode %in% c(phenocode1, phenocode2))
+wide_info <- sub_info %>%
+    mutate(
+      BETA_adjusted = sqrt(2*AF*(1-AF))*BETA
+    ) %>%
+  select(-Pvalue) %>%
+      pivot_wider(names_from = phenocode, names_prefix = 'beta_', values_from = BETA, id_cols = c('locus', 'alleles','AF', 'gene', 'annotation'))
+# View(wide_info)
+return(wide_info)
+}
+view_triplet_beta(top_triplets  %>% filter(AF < 1e-4), 'APOB', '30640', '30780')
+```
+
+
+# Residual analysis
+```{r}
+## potential variants to look at 
+raw_results_500k <- read_pleiotropy_results('burden', '500k') 
+results_500k <- modify_results_table(raw_results_500k, 'burden', '500k')
+target_vars <- results_500k %>% filter(pvalue < 1e-6) %>% select()
+```
+
+```{r}
+data <- top_triplets
+gene_name <- 'GMPR'
+pheno1 <- '30240'
+pheno1_name <- "Reticulocyte percentage"
+pheno2 <- '30290'
+pheno2_name <- "High light scatter reticulocyte percentage"
+annotation <- "missense|LC"
+```
+
+```{r}
+triplet_info <- data.frame(
+  gene = gene_name,
+  description1 = pheno1_name,
+  description2 = pheno2_name
+  # annotation = annotation
+)
+c_hat <- results_500k %>% merge(., triplet_info, by = colnames(triplet_info)) %>% select(colnames(triplet_info), annotation, c_hat)
+data <- view_triplet_beta(top_triplets  %>% filter(AF < 1e-4), gene_name, pheno1, pheno2) %>%
+    merge(., c_hat, by = c('gene','annotation')) %>%
+  mutate(residuals = get(paste0('beta_', pheno1)) - c_hat*get(paste0('beta_', pheno2)),
+         predicted = c_hat*get(paste0('beta_', pheno2)))
+
+p <- data %>%
+  ggplot + aes(x = predicted, y = residuals) +
+  geom_hex() +
+  geom_point() +
+  geom_hline(aes(yintercept = 0), lty=2) +
+  # geom_smooth(method = "lm", se = FALSE, color='black') +
+  # scale_y_log10() +
+  labs(x = paste0("Predicted ", pheno1_name, " Effect Size"),
+       y = "Residuals", color = 'Count') + themes +
+  scale_fill_gradient2(mid="#FBFEF9",low="#0C6291",high="#A63446", limits=c(0,200),midpoint = 50) +
+  facet_grid(~annotation)
+p
+```
+
+
+```{r}
+figure_residual_triplets_gene_sig_only <- function(data, gene_name, phenocode1, phenocode2, pheno1_name, pheno2_name, annotations, save, start_pos, end_pos){
+  triplet_info <- data.frame(
+    gene = gene_name,
+    description1 = pheno1_name,
+    description2 = pheno2_name
+    # annotation = annotation
+  )
+  c_hat <- results_500k %>% merge(., triplet_info, by = colnames(triplet_info)) %>% select(colnames(triplet_info), annotation, c_hat)
+  data <- view_triplet_beta(data  %>% filter(AF < 1e-4),gene_name, str_split(phenocode1, '_')[[1]][2], str_split(phenocode2, '_')[[1]][2]) %>%
+      merge(., c_hat, by = c('gene','annotation'))%>%
+      mutate(residuals = get(paste0('beta_', str_split(phenocode1, '_')[[1]][2])) - c_hat*get(paste0('beta_', str_split(phenocode2, '_')[[1]][2])),
+         predicted = c_hat*get(paste0('beta_', str_split(phenocode2, '_')[[1]][2]))) %>%
+    filter(annotation %in% annotations) %>%
+  mutate(pos = as.numeric(str_split(locus, ':') %>% map_chr(.,2))) %>%
+  mutate(last_exon = pos <= end_pos & pos >= start_pos & annotation == 'pLoF') 
+  # View(data)
+  text <- data %>%
+    filter(complete.cases(.)) %>%
+    group_by(annotation) %>%
+    dplyr::summarize(r2 = cor(get(paste0('beta_', str_split(phenocode1, '_')[[1]][2])), predicted)^2) %>%
+    mutate(annotation = factor(annotation, levels=annotation_types))
+  label <- data %>% filter(last_exon) %>%
+  mutate(annotation = factor(annotation, levels=annotation_types))
+  figure <- data %>%
+    mutate(annotation = factor(annotation, levels=annotation_types)) %>%
+    ggplot + aes(x = predicted, y = residuals) +
+    geom_point(alpha = 0.5, color = "#0C6291") +
+    geom_hline(aes(yintercept = 0), lty=2) +
+    labs(x = paste0("Predicted ", pheno1_name, " Effect Size"),
+         y = "Residuals", color = NULL) + themes +
+    # scale_fill_gradient2(mid="#FBFEF9",low="#0C6291",high="#A63446", midpoint = 50) +
+    geom_text_repel(data = text, aes(x=-Inf, y= Inf, label=paste0('R_squared = ',round(r2,2)), size =3))+
+    geom_text_repel(data = label, aes(x = predicted, y = residuals, label = locus, size = 1), color = "#0C6291") +
+    guides(size = "none") +
+    theme(legend.position = 'right')+
+    facet_grid(~annotation, labeller = label_type)
+
+# figure <- pvalue_info  %>%
+#   ggplot + 
+#    aes(x=pvalue_info[,paste0('beta_',phenocode1)], y=pvalue_info[,paste0('beta_',phenocode2)], color = annotation, size = -log(mean_p))  +
+#   # aes(x=sqrt(2*AF*(1-AF))*pvalue_info[,paste0('beta_',phenocode1)], y=sqrt(2*AF*(1-AF))*pvalue_info[,paste0('beta_',phenocode2)], color = annotation, size = -log(mean_p)) +
+#   # labs(x=pheno1_name, y=pheno2_name, title =paste0(gene_name, '-', annotation) ) + 
+#   geom_point() +
+#   geom_abline(slope = 1, intercept = 0, lty=2) +
+#   geom_vline(xintercept = 0, lty=2) +
+#   geom_hline(yintercept = 0, lty=2) +
+#   annotation_color_scale + annotation_fill_scale + themes + 
+#   labs(x=paste0(pheno1_name, '--', gene_name), y=pheno2_name, title = NULL) + 
+#   geom_text_repel(data = raw_results_500k %>% filter(gene==gene_name & pheno1==phenocode1 & pheno2==phenocode2 & annotation %in% annotations) %>%
+#   mutate(annotation = factor(annotation, levels=annotation_types)), aes(x=-Inf, y= Inf, label=formatC(pvalue, format = "e"), color=annotation, size =5))+
+#   geom_text_repel(data = text, aes(x=text[,paste0('beta_',phenocode1)], y=text[,paste0('beta_',phenocode2)], label = locus, color = annotation, size = 1)) +
+#   guides(size = "none") +
+#   theme(legend.position = 'top')
+if(save){
+  png(paste0(figure_path, 'beta_figures/residual_figures_no_af_adjustment_gene_sig_only/',gene_name, '_', str_split(phenocode1, '_')[[1]][2], '_', str_split(phenocode2, '_')[[1]][2],'_1e_4.png'), height = 3, width = 3*length(annotations), units = 'in', res = 300)
+  print(figure)
+  dev.off()
+}
+return(figure)
+}
+```
+
+```{r}
+top_hits <- results_500k %>% filter(pvalue < 1e-6) 
+gene_annts <- top_hits %>% merge(., results_500k, by = colnames(results_500k)[c(1, 3:5, 7:9, 11)], suffixes = c('.x', '')) %>% select("gene", "annotation", "pheno1", "description1", "pheno2", "description2")
+for(i in 1:nrow(top_hits)){
+  tmp <- top_hits[i, ]
+  if(tmp[,'gene'] != 'ALPL') next
+  pos <- last_exon[last_exon$gene == tmp[,'gene'],]
+  annotations <- unlist(merge(tmp, gene_annts, by = c("gene", "pheno1", "description1", "pheno2", "description2"), suffixes = c('.x', '')) %>% select(annotation))
+  figure_residual_triplets_gene_sig_only(top_triplets, tmp[,'gene'], tmp[,'pheno1'], tmp[,'pheno2'], tmp[,'description1'], tmp[,'description2'], annotations, save=T, unlist(pos$start), unlist(pos$end))
+}
+```
+
+
+# ALB step by step
+```{r}
+alb_betas <- top_triplets %>% 
+  filter(gene == 'ALB' & phenocode %in% c('30600', '30680') & annotation != 'synonymous') %>%
+  pivot_wider(id_cols = c('locus', 'alleles', 'AC', 'AF', 'gene', 'annotation'),names_from = c('phenocode'), values_from = BETA)
+```
+
+```{r}
+single_test <- function(data, pheno_corr, pheno1, pheno2, n_ind, sig_level, gene){
+  # n_ind <- n_ind %>% filter(phenocode %in% c(pheno1, pheno2)) %>% summarise(mean=mean(n_cases))
+  # n_ind <- as.numeric(n_ind$mean)
+  sub <- data %>% select(1:5, pheno1, pheno2) %>% filter(complete.cases(.))
+  sub <- as.data.frame(sub)
+  if(nrow(sub)>1){
+    A <- 2*diag(sub$AF)
+  }else{
+    A <- as.matrix(2*sub$AF)
+  }
+  b1_hat <- t(as.matrix(sub[,pheno1]))
+  b2_hat <- t(as.matrix(sub[,pheno2]))
+  r <- pheno_corr
+  c_hat <- get_c_hat(b1_hat, b2_hat, A, r)
+  lambda <- get_likelihood_test_stats(n_ind, r, b1_hat, b2_hat, c_hat, A)
+  pvalue <- 1 - pchisq(lambda, length(b1_hat)-1)
+  results <- data.frame(pheno1, pheno2, c_hat, lambda, pvalue, gene, length(b1_hat))
+  colnames(results) <- c('pheno1', 'pheno2', 'c_hat', 'lambda', 'pvalue', 'gene','n_var')
+  beta <- data.frame(b1 = t(b1_hat), b2 = t(b2_hat), AF = c(diag(A))) %>% 
+    mutate(pheno1 = pheno1, pheno2  = pheno2)
+  return(list(results = results, beta = beta))
+}
+get_c_hat <- function(b1_hat, b2_hat, A, r){
+  u <- c(b2_hat %*% A %*% t(b1_hat - r* b2_hat))
+  print(paste0('u:', u))
+  v <- c((b2_hat - b1_hat) %*% A %*% t(b2_hat + b1_hat))
+  print(paste0('v:', v))
+  w <- c(b1_hat %*% A %*% t(r* b1_hat- b2_hat))
+  print(paste0('w:', w))
+  c1 <- c((-v + sqrt(v^2-4*u*w))/(2*u))
+  print(paste0('c1:', c1))
+  c2 <- c((-v - sqrt(v^2-4*u*w))/(2*u))
+  print(paste0('c2:', c2))
+  c_hat <- if_else(u>0, max(c1,c2), min(c1,c2))
+  print(paste0('c_hat:', c_hat))
+  return(c_hat)
+}
+```
+
+
+```{r}
+# missense
+pheno1 = '30600'
+pheno2 = '30680'
+sub <- alb_betas %>% filter(annotation == 'missense|LC') %>% filter(complete.cases(.) & AF <= 1e-4)
+A <- 2*diag(sub$AF)
+b1_hat <- t(as.matrix(sub[,pheno1]))
+b2_hat <- t(as.matrix(sub[,pheno2]))
+r <- 0.51367
+c_hat <- get_c_hat(b1_hat, b2_hat, A, r)
+```
+## ALPL
+```{r}
+alpl_result <- results_500k %>% filter(gene == 'ALPL')
+alpl_info <- read_delim('~/Downloads/alpl_var_hgvsp_500k.txt.bgz', delim='\t', col_types = cols(phenocode = col_character())) %>% 
+  mutate(coding = if_else(is.na(coding), '', coding)) %>%
+  mutate(phenoname = paste0(trait_type, '_', phenocode, '_',  pheno_sex, '_',  coding, '_',  modifier))
+```
+
+
+```{r}
+top_hits <- results_500k %>% filter(gene == 'ALPL' & annotation == 'missense|LC')
+gene_annts <- top_hits %>% merge(., results_500k, by = colnames(results_500k)[c(1, 3:5, 7:9, 11)], suffixes = c('.x', '')) %>% select("gene", "annotation", "pheno1", "description1", "pheno2", "description2")
+for(i in 1:nrow(top_hits)){
+  tmp <- top_hits[i, ]
+  pos <- last_exon[last_exon$gene == tmp[,'gene'],]
+  annotations <- unlist(merge(tmp, gene_annts, by = c("gene", "pheno1", "description1", "pheno2", "description2"), suffixes = c('.x', '')) %>% select(annotation))
+  print(annotations)
+  figure_beta_triplets_gene_sig_only(alpl_info  %>% filter(AF < 1e-4), tmp[,'gene'], tmp[,'pheno1'], tmp[,'pheno2'], tmp[,'description1'], tmp[,'description2'], annotations, save=T, unlist(pos$start), unlist(pos$end))
+}
+```
+
+
+# BETAs for Siwei
+```{r}
+data <- read_delim('/Users/wlu/Dropbox (Partners HealthCare)/analysis/ukb_exomes_pleiotropy/data/alb_albumin_calcium_var_hgvsp_500k.txt.bgz', delim='\t', col_types = cols(phenocode = col_character()))
+alb_betas <- data %>% 
+  mutate(AF = pop_AF, AC = pop_AC) %>%
+  select('locus', 'alleles', 'AC', 'AF', 'gene', 'annotation', 'hgvsp', 'phenocode', 'Pvalue', 'BETA') %>%
+  filter(gene == 'ALB' & phenocode %in% c('30600', '30680') & annotation != 'synonymous') %>%
+  pivot_wider(id_cols = c('locus', 'alleles', 'AC', 'AF', 'gene', 'annotation', 'hgvsp'),names_from = c('phenocode'),values_from = c('Pvalue', 'BETA')) %>%
+  mutate(highlight = BETA_30600*BETA_30680 < 0 & abs(BETA_30600) > 0.75 & abs(BETA_30680) >0.75) %>%
+  filter(!is.na(BETA_30600) & !is.na(BETA_30680)) %>%
+  mutate(chrom = str_split(locus, ":") %>% map_chr(., 1),
+         pos = str_split(locus, ":") %>% map_chr(., 2),)
+```
+
+```{r}
+data <- read_delim('~/Downloads/alpl_var_hgvsp_500k.txt.bgz', delim='\t', col_types = cols(phenocode = col_character()))
+alpl_betas <- data %>% 
+  filter(gene == 'ALPL' & phenocode %in% c('30610', '30810') & annotation != 'synonymous' & !is.na(BETA)) %>%
+  pivot_wider(id_cols = c('locus', 'alleles', 'AC', 'AF', 'gene', 'annotation', 'hgvsp'),names_from = c('phenocode'), values_from = c('Pvalue', 'BETA')) %>%
+  mutate(highlight = BETA_30610*BETA_30810 > 0 & abs(BETA_30610) > 0.5 & abs(BETA_30810) >0.5)%>%
+  filter(!is.na(BETA_30610) & !is.na(BETA_30810)) %>%
+  mutate(chrom = str_split(locus, ":") %>% map_chr(., 1),
+         pos = str_split(locus, ":") %>% map_chr(., 2),)
+```
+
+```{r}
+alb_betas %>%
+  write_tsv('~/Desktop/ukb_pleiotropy_alb_variants_for_siwei.tsv')
+alpl_betas %>%
+  write_tsv('~/Desktop/ukb_pleiotropy_alpl_variants_for_siwei.tsv')
+```
+
+## All betas for Siwei 
+```{r}
+for_siwei <- results_500k %>%
+  filter(pvalue < 1e-5 & annotation == 'missense|LC') %>%
+  mutate(phenocode1 = str_split(pheno1, '_') %>% map_chr(., 2),
+         phenocode2 = str_split(pheno2, '_') %>% map_chr(., 2),) %>%
+  select(gene, phenocode1, phenocode2) %>%
+  pivot_longer(cols = c('phenocode1', 'phenocode2'),names_to = 'phenocode') %>%
+  select(gene, value) %>%
+  distinct() %>%
+  write_tsv('~/Dropbox (Partners HealthCare)/analysis/ukb_exomes_pleiotropy/ukb_pleiotropy_sig_genes_1e_5_for_siwei.tsv')
+```
+
+```{r}
+test <- read_delim('~/Downloads/wrap_up_results_for_siwei_ALB_var_500k_for_siwei.txt') %>%
+  select(chromosome, start, end, allele) %>%
+  distinct() %>%
+  write_delim('~/Downloads/wrap_up_results_for_siwei_ALB_var_500k_for_vep.txt', col_names = F)
+```
+
+```{r}
+ vep_info <- read_delim(paste0('~/Downloads/ALB_vep.txt'))
+```
+
+```{r}
+triplets <- results_500k %>%
+  filter(pvalue < 1e-5 & annotation == 'missense|LC') %>%
+  mutate(phenocode1 = str_split(pheno1, '_') %>% map_chr(., 2),
+         phenocode2 = str_split(pheno2, '_') %>% map_chr(., 2),) %>%
+  select(gene, phenocode1, phenocode2)
+
+genes <- sort(unique(triplets$gene))
+for(i in 1:length(genes)){
+  print(genes[i])
+  if(!file.exists(paste0('~/Downloads/wrap_up_results_for_siwei_', genes[i],'_var_500k_for_siwei.txt'))) break
+  test_info <- read_delim(paste0('~/Downloads/wrap_up_results_for_siwei_', genes[i],'_var_500k_for_siwei.txt'))
+  for_vep <- test_info %>%
+    select(chromosome, start, end, allele) %>%
+    distinct() %>%
+    write_delim(paste0('~/Downloads/', genes[i],'_for_vep.txt'), col_names = F)
+  tmp_triplets <- triplets %>% filter(gene == genes[i])
+  for(j in 1:nrow(tmp_triplets)){
+    current_triplet <- tmp_triplets[j,]
+    file_path <- paste0('~/Dropbox (Partners HealthCare)/analysis/ukb_exomes_pleiotropy/for_siwei/files_for_siwei/', genes[i], '/', genes[i],'_', current_triplet[,'phenocode1'], '_', current_triplet[,'phenocode2'],'_beta_pvalue.tsv')
+    print(file_path)
+    if(file.exists(file_path)) next
+    write_info <- test_info %>%
+      filter(phenocode %in% c(current_triplet[,'phenocode1'], current_triplet[,'phenocode2'])) %>%
+      mutate(identifier = paste0(chromosome, '_', start, '_', allele)) %>%
+      select(identifier, locus, alleles, phenocode, AC, AF, gene, annotation, Pvalue, BETA, hgvsp) %>%
+      pivot_wider(id_cols = c('identifier', 'locus', 'alleles', 'AC', 'AF', 'gene', 'annotation', 'hgvsp'),names_from = c('phenocode'), values_from = c('Pvalue', 'BETA')) %>%
+      write_tsv(file_path)
+  }
+}
+```
+## Polarized figure
+```{r}
+figure_beta_triplets_gene_sig_only_polarized <- function(data, gene_name, phenocode1, phenocode2, pheno1_name, pheno2_name, annotations, save){
+  sub_info <- data %>%
+    filter(gene == gene_name & phenoname %in% c(phenocode1, phenocode2))
+  wide_info <- sub_info %>%
+    mutate(annotation = if_else(annotation %in% c('missense', 'LC'), 'missense|LC', annotation)) %>%
+    filter(annotation %in% annotations) %>%
+    pivot_wider(names_from = phenoname, values_from = c('BETA', 'Pvalue'), id_cols = c('locus', 'alleles','AF', 'gene', 'annotation'))  %>%
+    mutate(pheno1_polarize  = if_else(get(paste0('BETA_',phenocode1)) < 0, -get(paste0('BETA_',phenocode1)), get(paste0('BETA_',phenocode1)) ),
+           pheno2_polarize  = if_else(get(paste0('BETA_',phenocode1)) < 0, -get(paste0('BETA_',phenocode2)), get(paste0('BETA_',phenocode2)) ))
+  figure <- wide_info %>%
+    mutate(annotation = factor(annotation, levels=annotation_types)) %>%
+    ggplot + 
+    aes(x=pheno1_polarize, y=pheno2_polarize, color = annotation, alpha = log10(AF))  +
+    geom_point() +
+    geom_abline(slope = 1, intercept = 0, lty=2) +
+    geom_abline(slope = -1, intercept = 0, lty=2) +
+    geom_hline(yintercept = 0) +
+    xlim(0, max(wide_info$pheno1_polarize)) +
+    #scale_size(range = c(0.5, 5)) +
+    annotation_color_scale + annotation_fill_scale + themes + 
+    labs(x=paste0(pheno1_name), y=pheno2_name, title = NULL, alpha=expression(bold(log[10](AF)))) + 
+    geom_text_repel(data = raw_results_500k %>% filter(gene==gene_name & pheno1==phenocode1 & pheno2==phenocode2 & annotation %in% annotations) %>%
+    mutate(annotation = factor(annotation, levels=annotation_types)), aes(x=-Inf, y= Inf, label=formatC(pvalue, format = "e"), color=annotation, size =5), alpha=1)+
+    facet_wrap(~annotation, labeller = label_type, nrow = 1) +
+    geom_text_repel(data = raw_results_500k %>% filter(gene==gene_name & pheno1==phenocode1 & pheno2==phenocode2 & annotation %in% annotations) %>%
+    mutate(annotation = factor(annotation, levels=annotation_types)), aes(x=Inf, y= Inf, label=gene, color=annotation, size =5), alpha=1)+
+    theme(legend.position = 'top',
+          legend.text = element_text(size=5)) +
+    guides(size = 'none', color='none')
+if(save){
+  png(paste0(FIGURE_PATH, gene_name, '_', str_split(phenocode1, '_')[[1]][2], '_', str_split(phenocode2, '_')[[1]][2],'_1e_4.png'), height = 3.5, width = 4+2*(length(annotations)-1), units = 'in', res = 300)
+  print(figure)
+  dev.off()
+}
+return(figure)
+}
+```
+
+
+```{r}
+tmp <- top_hits[top_hits$gene == 'ALPL', ]
+for(i in 1: nrow(tmp)){
+  annotations <- unlist(merge(tmp[i,], gene_annts, by = c("gene", "pheno1", "description1", "pheno2", "description2"), suffixes = c('.x', '')) %>% select(annotation))
+  figure_beta_triplets_gene_sig_only_polarized(top_triplets  %>% filter(AF < 1e-4), 'ALPL', tmp[i,'pheno1'], tmp[i,'pheno2'], tmp[i,'description1'], tmp[i,'description2'], annotations, save=T)
+}
+
+```
+
+
+```{r}
+FIGURE_PATH <- '~/Desktop/'
+top_hits <- results_500k %>% filter(pvalue < 1e-6) 
+gene_annts <- top_hits %>% merge(., results_500k, by = colnames(results_500k)[c(1, 3:5, 7:9, 11)], suffixes = c('.x', '')) %>% select("gene", "annotation", "pheno1", "description1", "pheno2", "description2")
+for(i in 1:nrow(top_hits)){
+  tmp <- top_hits[i, ]
+  # if(!dir.exists(paste0('~/Dropbox (Partners HealthCare)/analysis/ukb_exomes_pleiotropy/for_siwei/files_for_siwei/', tmp[,'gene'], '/'))) next
+  annotations <- unlist(merge(tmp, gene_annts, by = c("gene", "pheno1", "description1", "pheno2", "description2"), suffixes = c('.x', '')) %>% select(annotation))
+  figure_beta_triplets_gene_sig_only_polarized(top_triplets  %>% filter(AF < 1e-4), tmp[,'gene'], tmp[,'pheno1'], tmp[,'pheno2'], tmp[,'description1'], tmp[,'description2'], annotations, save=T)
+}
+```
+

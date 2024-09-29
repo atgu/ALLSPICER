@@ -1,0 +1,555 @@
+---
+title: "binary_newtons_methods"
+output: html_document
+date: "2023-05-24"
+---
+## Load functions
+```{r}
+source('~/ukbb_exomes_pleiotropy/R/constants.R')
+source('~/ukbb_exomes_pleiotropy/R/simulations.R')
+```
+
+
+## Known values
+```{r}
+k_11 <- 1
+k_10 <- 1
+k_01 <- 0
+k_00 <- 33
+n_11 <- 178
+n_10 <- 23975
+n_01 <- 286
+n_00 <- 370402
+n_cases1 <- n_11 + n_10
+n_cases2 <- n_11 + n_01
+n_controls1 <- n_01 + n_00
+n_controls2 <- n_10 + n_00
+pheno1 <- 'E11'
+pheno2 <- 'I11'
+AC <- k_11 + k_10 + k_01 + k_00
+AC_1 <- k_11 + k_10
+AC_2 <- k_11 + k_01
+var_cnt_data <- data.frame(matrix(ncol = 12, nrow = 0))
+var1 <- c('var1', pheno1, pheno2, n_cases1, n_cases2, n_controls1, n_controls2, AC_1, AC_2, AC, n_11)
+var_cnt_data <- rbind(var_cnt_data, var1)
+M <- 5 # number of variants
+for(i in 1:(M-1)){
+  k_11 <- floor(runif(1, 0, 5))
+  k_10 <- floor(runif(1, 0, 30))
+  k_01 <- floor(runif(1, 0, 30))
+  k_00 <- floor(runif(1, 0, 100))
+  AC <- k_11 + k_10 + k_01 + k_00
+  AC_1 <- k_11 + k_10
+  AC_2 <- k_11 + k_01
+  var_temp <- c(paste0('var', i), pheno1, pheno2, n_cases1, n_cases2, n_controls1, n_controls2, AC_1, AC_2, AC, n_11)
+  var_cnt_data <- rbind(var_cnt_data, var_temp)
+}
+colnames(var_cnt_data) <- c('variant', 'pheno1', 'pheno2', 'n_cases1', 'n_cases2', 'n_controls1', 'n_controls2', 'AC_case1', 'AC_case2', 'AC_total', 'n11')
+var_cnt_data[,4:11] <- sapply(var_cnt_data[,4:11], as.numeric)
+
+```
+
+## Initializing variables
+```{r}
+alpha0 <- rep(0, M)
+alpha1 <- rep(10, M)
+# alpha0 <- rnorm(M)
+# alpha1 <- rnorm(M)
+c <- 0
+x <- c(alpha0, alpha1, c)
+```
+
+## Loglikelihood
+```{r}
+ll_0 <- function(var_cnt_data,alpha0, alpha1, c){
+  ll_0 <- sum( var_cnt_data[,'AC_total']*alpha0 + var_cnt_data[,'AC_case1']*alpha1 + var_cnt_data[,'AC_case2']*c*alpha1 - n_00*log(exp(alpha0+1)+1) - n_10*log(exp(alpha0+alpha1)+1)- n_01*log(exp(alpha0+c*alpha1)+1) - n_11*log(exp(alpha0+(c+1)*alpha1)+1))
+  return(ll_0)
+}
+```
+
+```{r}
+ll_0(var_cnt_data, x[1:M], x[(M+1):(2*M)], x[(2*M+1)])
+```
+
+
+## Gradients
+```{r}
+ll_alpha0j <- function(ACj, alpha0j, alpha1j, c){
+ grad = ACj - n_00/(as.brob(exp(1))^(-alpha0j)+1) - n_10/(as.brob(exp(1))^(-alpha0j-alpha1j)+1) - n_01/(as.brob(exp(1))^(-alpha0j-c*alpha1j)+1) - n_11/(as.brob(exp(1))^(-alpha0j-(c+1)*alpha1j)+1)
+ return(as.numeric(-grad))
+}
+ll_alpha1j <- function(AC_1j, AC_2j, alpha0j, alpha1j, c){
+ grad = AC_1j + c*AC_2j - n_10/(as.brob(exp(1))^(-alpha0j-alpha1j)+1) - n_01*c/(as.brob(exp(1))^(-alpha0j-c*alpha1j)+1) - n_11*(c+1)/(as.brob(exp(1))^(-alpha0j-(c+1)*alpha1j)+1)
+ return(as.numeric(-grad))
+}
+ll_c <- function(AC_2, alpha0, alpha1, c){
+ # AC_2, alpha0, alpha1 should all be vectors of length M
+ grad = sum(alpha1 * (AC_2 - n_01/(as.brob(exp(1))^(-alpha0-c*alpha1)+1) - n_11/(as.brob(exp(1))^(-alpha0-(c+1)*alpha1)+1)))
+ return(as.numeric(-grad))
+}
+grad <- function(x, M, var_cnt_data){
+  # x is a vector of 2M+1
+  gradient <- c(mapply(ll_alpha0j, var_cnt_data[,'AC_total'], x[1:M], x[(M+1):(2*M)], x[(2*M+1)]), 
+                mapply(ll_alpha1j, var_cnt_data[,'AC_case1'], var_cnt_data[,'AC_case2'], x[1:M], x[(M+1):(2*M)], x[(2*M+1)]), 
+                ll_c(var_cnt_data[,'AC_case2'], x[1:M], x[(M+1):(2*M)], x[(2*M+1)]))
+  return(gradient)
+}
+```
+
+```{r}
+x = 
+grad(x)
+```
+
+## Hessian Matrix
+```{r}
+ll_alpha0j_alpha0j <- function(alpha0j, alpha1j, c){
+ grad2 = -(n_00*exp(-alpha0j)/(exp(-alpha0j)+1)^2 + n_10*exp(-alpha0j-alpha1j)/(exp(-alpha0j-alpha1j)+1)^2 + n_01*exp(-alpha0j-c*alpha1j)/(exp(-alpha0j-c*alpha1j)+1)^2 + n_11*exp(-alpha0j-(c+1)*alpha1j)/(exp(-alpha0j-(c+1)*alpha1j)+1)^2)
+ return(as.numeric(-grad2))
+}
+ll_alpha0j_alpha1j <- function(alpha0j, alpha1j, c){
+ grad2 = - (n_10*exp(-alpha0j-alpha1j)/(exp(-alpha0j-alpha1j)+1)^2 + n_01*c*exp(-alpha0j-c*alpha1j)/(exp(-alpha0j-c*alpha1j)+1)^2 + n_11*(c+1)*exp(-alpha0j-(c+1)*alpha1j)/(exp(-alpha0j-(c+1)*alpha1j)+1)^2)
+ return(as.numeric(-grad2))
+}
+ll_alpha0j_c <- function(alpha0j, alpha1j, c){
+ grad2 = -alpha1j * (n_01*exp(-alpha0j-c*alpha1j)/(exp(-alpha0j-c*alpha1j)+1)^2 + n_11*exp(-alpha0j-(c+1)*alpha1j)/(exp(-alpha0j-(c+1)*alpha1j)+1)^2)
+ return(as.numeric(-grad2))
+}
+
+ll_alpha1j_alpha1j <- function(alpha0j, alpha1j, c){
+ grad2 = - (n_10*exp(-alpha0j-alpha1j)/(exp(-alpha0j-alpha1j)+1)^2 + n_01*c^2*exp(-alpha0j-c*alpha1j)/(exp(-alpha0j-c*alpha1j)+1)^2 + n_11*(c+1)^2*exp(-alpha0j-(c+1)*alpha1j)/(exp(-alpha0j-(c+1)*alpha1j)+1)^2)
+ return(as.numeric(-grad2))
+}
+ll_alpha1j_alpha0j <- function(alpha0j, alpha1j, c){
+ grad2 = -(n_10*exp(-alpha0j-alpha1j)/(exp(-alpha0j-alpha1j)+1)^2 + n_01*c*exp(-alpha0j-c*alpha1j)/(exp(-alpha0j-c*alpha1j)+1)^2 - n_11*(c+1)*exp(-alpha0j-(c+1)*alpha1j)/(exp(-alpha0j-(c+1)*alpha1j)+1)^2)
+ return(as.numeric(-grad2))
+}
+ll_alpha1j_c <- function(AC_2j, alpha0j, alpha1j, c){
+ grad2 = (AC_2j - n_01/(exp(-alpha0j-c*alpha1j)+1)  - n_01*c*alpha1j*exp(-alpha0j-c*alpha1j)/(exp(-alpha0j-c*alpha1j)+1)^2 - n_11/(exp(-alpha0j-(c+1)*alpha1j)+1) - n_11*(c+1)*alpha1j*exp(-alpha0j-(c+1)*alpha1j)/(exp(-alpha0j-(c+1)*alpha1j)+1))
+ return(as.numeric(-grad2))
+}
+
+ll_c_c <- function(alpha0, alpha1, c){
+ # AC_2, alpha0, alpha1 should all be vectors of length M
+ grad2 = sum(-alpha1^2 *(n_01*exp(-alpha0-c*alpha1)/(exp(-alpha0-c*alpha1)+1)^2 + n_11*exp(-alpha0-(c+1)*alpha1)/(exp(-alpha0-(c+1)*alpha1)+1)^2))
+ return(-grad2)
+}
+ll_c_alpha0j <- function(alpha0j, alpha1j, c){
+ grad2 = -(n_01*exp(-alpha0j-c*alpha1j)/(exp(-alpha0j-c*alpha1j)+1)^2 + n_11*exp(-alpha0j-(c+1)*alpha1j)/(exp(-alpha0j-(c+1)*alpha1j)+1)^2)
+ return(as.numeric(-grad2))
+}
+ll_c_alpha1j <- function(AC_2j, alpha0j, alpha1j, c){
+ grad2 = AC_2j- n_01*c/(exp(-alpha0j-c*alpha1j)+1) - n_11*(c+1)/(exp(-alpha0j-(c+1)*alpha1j)+1) - alpha1j*(n_01*c*exp(-alpha0j-c*alpha1j)/(exp(-alpha0j-c*alpha1j)+1)^2 + n_11*(c+1)*exp(-alpha0j-(c+1)*alpha1j)/(exp(-alpha0j-(c+1)*alpha1j)+1)^2)
+ return(as.numeric(-grad2))
+}
+```
+
+## Hessian Matrix - big number adjusted 
+```{r}
+library(Brobdingnag)
+ll_alpha0j_alpha0j <- function(alpha0j, alpha1j, c){
+ grad2 = -(n_00*as.brob(exp(1))^(-alpha0j)/(as.brob(exp(1))^(-alpha0j)+1)^2 + n_10*as.brob(exp(1))^(-alpha0j-alpha1j)/(as.brob(exp(1))^(-alpha0j-alpha1j)+1)^2 + n_01*as.brob(exp(1))^(-alpha0j-c*alpha1j)/(as.brob(exp(1))^(-alpha0j-c*alpha1j)+1)^2 + n_11*as.brob(exp(1))^(-alpha0j-(c+1)*alpha1j)/(as.brob(exp(1))^(-alpha0j-(c+1)*alpha1j)+1)^2)
+ return(as.numeric(-grad2))
+}
+ll_alpha0j_alpha1j <- function(alpha0j, alpha1j, c){
+ grad2 = - (n_10*as.brob(exp(1))^(-alpha0j-alpha1j)/(as.brob(exp(1))^(-alpha0j-alpha1j)+1)^2 + n_01*c*as.brob(exp(1))^(-alpha0j-c*alpha1j)/(as.brob(exp(1))^(-alpha0j-c*alpha1j)+1)^2 + n_11*(c+1)*as.brob(exp(1))^(-alpha0j-(c+1)*alpha1j)/(as.brob(exp(1))^(-alpha0j-(c+1)*alpha1j)+1)^2)
+ return(as.numeric(-grad2))
+}
+ll_alpha0j_c <- function(alpha0j, alpha1j, c){
+ grad2 = -alpha1j * (n_01*as.brob(exp(1))^(-alpha0j-c*alpha1j)/(as.brob(exp(1))^(-alpha0j-c*alpha1j)+1)^2 + n_11*as.brob(exp(1))^(-alpha0j-(c+1)*alpha1j)/(as.brob(exp(1))^(-alpha0j-(c+1)*alpha1j)+1)^2)
+ return(as.numeric(-grad2))
+}
+
+ll_alpha1j_alpha1j <- function(alpha0j, alpha1j, c){
+ grad2 = - (n_10*as.brob(exp(1))^(-alpha0j-alpha1j)/(as.brob(exp(1))^(-alpha0j-alpha1j)+1)^2 + n_01*c^2*as.brob(exp(1))^(-alpha0j-c*alpha1j)/(as.brob(exp(1))^(-alpha0j-c*alpha1j)+1)^2 + n_11*(c+1)^2*as.brob(exp(1))^(-alpha0j-(c+1)*alpha1j)/(as.brob(exp(1))^(-alpha0j-(c+1)*alpha1j)+1)^2)
+ return(as.numeric(-grad2))
+}
+ll_alpha1j_alpha0j <- function(alpha0j, alpha1j, c){
+ grad2 = -(n_10*as.brob(exp(1))^(-alpha0j-alpha1j)/(as.brob(exp(1))^(-alpha0j-alpha1j)+1)^2 + n_01*c*as.brob(exp(1))^(-alpha0j-c*alpha1j)/(as.brob(exp(1))^(-alpha0j-c*alpha1j)+1)^2 - n_11*(c+1)*as.brob(exp(1))^(-alpha0j-(c+1)*alpha1j)/(as.brob(exp(1))^(-alpha0j-(c+1)*alpha1j)+1)^2)
+ return(as.numeric(-grad2))
+}
+ll_alpha1j_c <- function(AC_2j, alpha0j, alpha1j, c){
+ grad2 = (AC_2j - n_01/(as.brob(exp(1))^(-alpha0j-c*alpha1j)+1)  - n_01*c*alpha1j*as.brob(exp(1))^(-alpha0j-c*alpha1j)/(as.brob(exp(1))^(-alpha0j-c*alpha1j)+1)^2 - n_11/(as.brob(exp(1))^(-alpha0j-(c+1)*alpha1j)+1) - n_11*(c+1)*alpha1j*as.brob(exp(1))^(-alpha0j-(c+1)*alpha1j)/(as.brob(exp(1))^(-alpha0j-(c+1)*alpha1j)+1))
+ return(as.numeric(-grad2))
+}
+
+ll_c_c <- function(alpha0, alpha1, c){
+ # AC_2, alpha0, alpha1 should all be vectors of length M
+ grad2 = sum(-alpha1^2 *(n_01*as.brob(exp(1))^(-alpha0-c*alpha1)/(as.brob(exp(1))^(-alpha0-c*alpha1)+1)^2 + n_11*as.brob(exp(1))^(-alpha0-(c+1)*alpha1)/(as.brob(exp(1))^(-alpha0-(c+1)*alpha1)+1)^2))
+ return(as.numeric(-grad2))
+}
+ll_c_alpha0j <- function(alpha0j, alpha1j, c){
+ grad2 = -(n_01*as.brob(exp(1))^(-alpha0j-c*alpha1j)/(as.brob(exp(1))^(-alpha0j-c*alpha1j)+1)^2 + n_11*as.brob(exp(1))^(-alpha0j-(c+1)*alpha1j)/(as.brob(exp(1))^(-alpha0j-(c+1)*alpha1j)+1)^2)
+ return(as.numeric(-grad2))
+}
+ll_c_alpha1j <- function(AC_2j, alpha0j, alpha1j, c){
+ grad2 = AC_2j- n_01*c/(as.brob(exp(1))^(-alpha0j-c*alpha1j)+1) - n_11*(c+1)/(as.brob(exp(1))^(-alpha0j-(c+1)*alpha1j)+1) - alpha1j*(n_01*c*as.brob(exp(1))^(-alpha0j-c*alpha1j)/(as.brob(exp(1))^(-alpha0j-c*alpha1j)+1)^2 + n_11*(c+1)*as.brob(exp(1))^(-alpha0j-(c+1)*alpha1j)/(as.brob(exp(1))^(-alpha0j-(c+1)*alpha1j)+1)^2)
+ return(as.numeric(-grad2))
+}
+```
+
+```{r}
+hessian <- function(x, M, var_cnt_data){
+  H <- matrix(0, 2*M+1, 2*M+1)
+  diag(H) <- c(mapply(ll_alpha0j_alpha0j, x[1:M], x[(M+1):(2*M)], x[(2*M+1)]), 
+               mapply(ll_alpha1j_alpha1j, x[1:M], x[(M+1):(2*M)], x[(2*M+1)]), 
+               ll_c_c(x[1:M], x[(M+1):(2*M)], x[(2*M+1)]))
+  H[(2*M +1) , -(2*M+1)] <- c(mapply(ll_c_alpha0j, x[1:M], x[(M+1):(2*M)], x[(2*M+1)]), 
+                            mapply(ll_c_alpha1j, var_cnt_data[, 'AC_case2'], x[1:M], x[(M+1):(2*M)], x[(2*M+1)]))
+  H[-(2*M+1), (2*M +1)] <- c(mapply(ll_alpha0j_c, x[1:M], x[(M+1):(2*M)], x[(2*M+1)]), 
+                            mapply(ll_alpha1j_c, var_cnt_data[, 'AC_case2'], x[1:M], x[(M+1):(2*M)], x[(2*M+1)]))
+  for(i in 1: (2*M)){
+    for(j in 1: (2*M)){
+      if( (i == j) | (i%%M != j%%M)) next
+      alpha = x[1:(2*M)]
+      c = x[(2*M+1)]
+      if(i > j){
+        H[i, j] = ll_alpha1j_alpha0j(alpha[i], alpha[j], c)
+        }else{
+        H[i, j] = ll_alpha0j_alpha1j(alpha[i], alpha[j], c)
+        }
+      }
+  }
+  return(H)
+}
+
+```
+
+
+## Newton's method
+```{r}
+library(matrixcalc)
+M <- 5
+x_0 <- c(data$beta, 1)
+print(x_0)
+grad_norm <- norm(grad(x_0, M, var_cnt_data), type = "2")
+i <- 0
+lambda <- 0.01
+while(grad_norm > 1e-4){
+  i <- i+1
+  print(paste('-------------ROUND ', i, '----------------------'))
+  gradient <- grad(x_0, n_var, var_cnt_data)
+  H <- hessian(x_0, n_var, var_cnt_data)
+  H <- H  - lambda*diag(rep(1, (2*M +1)))
+  delta_x <- solve(H, -gradient)
+  x_1 <- x_0 + delta_x
+  gradient_1 <- grad(x_1, M, var_cnt_data)
+  grad_norm <- norm(gradient_1, type = "2")
+  print(grad_norm)
+  x_0 <- x_1
+}
+LL_0 <- ll_0(var_cnt_data, x_0[1:M], x_0[(M+1):(2*M)], x_0[(2*M+1)])
+LL_0
+```
+
+
+```{r}
+gradient
+```
+
+
+```{r}
+run_newtons_method <- function(x_0, var_cnt_data, n_var = 5, convergence = 1e-4, lambda = 0.01){
+  library(matrixcalc)
+  grad_norm <- norm(grad(x_0, n_var, var_cnt_data), type = "2")
+  i <- 0
+  while(grad_norm > convergence){
+    i <- i+1
+    print(paste('-------------ROUND ', i, '----------------------'))
+    print('x0:')
+    print(x_0)
+    gradient <- grad(x_0, n_var, var_cnt_data)
+    print('gradient 0: ')
+    print(gradient)
+    H <- hessian(x_0, n_var, var_cnt_data)
+    print('hessian diagonal: ')
+    print(diag(H))
+
+    H <- H  - lambda*diag(rep(1, 2*n_var +1))
+    delta_x <- solve(H, -gradient)
+    x_1 <- x_0 + delta_x
+    gradient_1 <- grad(x_1, n_var, var_cnt_data)
+    print('gradient 1: ')
+    print(gradient_1)
+    grad_norm <- norm(gradient_1, type = "2")
+    print(grad_norm)
+    x_0 <- x_1
+  }
+  LL_0 <- ll_0(var_cnt_data, x_0[1:n_var], x_0[(n_var+1):(2*n_var)], x_0[(2*n_var+1)])
+  return(LL_0)
+}
+
+```
+
+## Simulation
+```{r}
+n_ind <- 100
+n_var <- 5
+c <- 1
+scalar <- 10
+```
+
+```{r}
+AC <- get_ac_mat(n_var)
+A <- get_af_mat(AC, n_ind)
+X <- get_geno_mat(AC, n_ind)
+env <- matrix(rnorm(n_ind)/scalar, nrow = 1, byrow=T)
+beta <- rnorm(n_var)/scalar
+beta <- matrix(c(beta, c*beta), nrow = 2, byrow = T)
+betaEnv <- matrix(c(1, 1), nrow = 2, byrow=T)
+intercept <- matrix(rep(0, 2*n_ind), nrow = 2, byrow=T)
+```
+
+```{r}
+logodds <- beta %*% X + betaEnv %*% env + intercept
+logistic = function(x){(1/(1+exp(-x)))}
+Y <- matrix(as.numeric( runif(n_ind*2) < sapply(logodds, logistic)), nrow = 100, byrow=T)
+cor(Y)
+```
+
+## sample data
+```{r}
+samples <- cbind(data.frame(t(X)), data.frame(Y))
+colnames <- c()
+for(i in 1: n_var) colnames <- c(colnames, paste0('var', i))
+colnames(samples) <- c(colnames, 'pheno1', 'pheno2')
+```
+
+```{r}
+pheno_sum <- samples %>%
+  # group_by(get(colnames[1:n_var])) %>%
+  dplyr::summarize(
+    n_cases1 = sum(pheno1),
+    n_cases2 = sum(pheno2),
+    n_controls1 = sum(!pheno1),
+    n_controls2 = sum(!pheno2),
+    n11 = sum(pheno1 & pheno2)
+  )
+
+geno_sum <- samples %>%
+  dplyr::reframe(AC_total = sapply(., sum),
+                   AC_case1 = sapply(., function(x) sum(x & pheno1)),
+                   AC_case2 = sapply(., function(x) sum(x & pheno2)),)
+
+var_cnt_data <- cbind(
+  variant = colnames(samples)[1:n_var],
+  pheno1 = 'pheno1',
+  pheno2 = 'pheno2',
+  pheno_sum[rep(1, n_var), ],
+  geno_sum[1:n_var,]
+)
+```
+
+
+```{r}
+simulate_binary_data <- function(n_ind = 100, n_var = 5, c = 1, scalar = 10){
+  AC <- get_ac_mat(n_var)
+  A <- get_af_mat(AC, n_ind)
+  X <- get_geno_mat(AC, n_ind)
+  env <- matrix(rnorm(n_ind)/scalar, nrow = 1, byrow=T)
+  beta <- rnorm(n_var)/scalar
+  beta <- matrix(c(beta, c*beta), nrow = 2, byrow = T)
+  betaEnv <- matrix(c(1, 1), nrow = 2, byrow=T)
+  intercept <- matrix(rep(0, 2*n_ind), nrow = 2, byrow=T)
+  logodds <- beta %*% X + betaEnv %*% env + intercept
+  logistic = function(x){(1/(1+exp(-x)))}
+  Y <- matrix(as.numeric( runif(n_ind*2) < sapply(logodds, logistic)), nrow =n_ind, byrow=T)
+  print('Phenotypic correlation:')
+  print(cor(Y))
+  return(list(X=X, Y=Y,beta = beta))
+}
+
+simulate_binary_data_summary <- function(data, n_ind = 100, n_var = 5, c = 1, scalar = 10){
+  samples <- cbind(data.frame(t(data$X)), data.frame(data$Y))
+  colnames <- c()
+  for(i in 1: n_var) colnames <- c(colnames, paste0('var', i))
+  colnames(samples) <- c(colnames, 'pheno1', 'pheno2')
+  
+  pheno_sum <- samples %>%
+    dplyr::summarize(
+      n_cases1 = sum(pheno1),
+      n_cases2 = sum(pheno2),
+      n_controls1 = sum(!pheno1),
+      n_controls2 = sum(!pheno2),
+      n11 = sum(pheno1 & pheno2)
+    )
+
+  geno_sum <- samples %>%
+    dplyr::reframe(AC_total = sapply(., sum),
+                   AC_case1 = sapply(., function(x) sum(x & pheno1)),
+                   AC_case2 = sapply(., function(x) sum(x & pheno2)),
+                   k11 = sapply(., function(x) sum(pheno1 & pheno2 & x)))
+  
+  var_cnt_data <- cbind(
+    variant = colnames(samples)[1:n_var],
+    pheno1 = 'pheno1',
+    pheno2 = 'pheno2',
+    pheno_sum[rep(1, n_var), ],
+    geno_sum[1:n_var,]
+  )
+  return(var_cnt_data)
+}
+```
+
+```{r}
+data <- simulate_binary_data(n_ind, n_var, c, scalar)
+var_cnt_data <- simulate_binary_data_summary(data, n_ind=100, n_var = 5, c = 1, scalar = 10)
+run_newtons_method(c(data$beta, c), var_cnt_data, n_var = 5, convergence = 1e-4, lambda = 0.01)
+```
+
+## Manual derivation
+```{r}
+ll_0 <- function(AC, AC_1, AC_2,alpha0, alpha1, c){
+  ll_0 <- - sum( AC*alpha0 + AC_1*alpha1 + AC_2*c*alpha1 - n_00*log(as.brob(exp(1))^(alpha0+1)+1) - n_10*log(as.brob(exp(1))^(alpha0+alpha1)+1)- n_01*log(as.brob(exp(1))^(alpha0+c*alpha1)+1) - n_11*log(as.brob(exp(1))^(alpha0+(c+1)*alpha1)+1))
+  return(ll_0)
+}
+first_derivative_i <- function(x, M, var_cnt_data, h, i){
+  new_x <- x
+  new_x[i] <- x[i] + h
+  first_derivative <- (ll_0(var_cnt_data[,'AC_total'], var_cnt_data[,'AC_case1'], var_cnt_data['AC_case2'], new_x[1:M], new_x[(M+1):(2*M)], new_x[(2*M+1)]) -
+                         ll_0(var_cnt_data[,'AC_total'], var_cnt_data[,'AC_case1'], var_cnt_data['AC_case2'], x[1:M], x[(M+1):(2*M)], x[(2*M+1)]))/h
+  return(first_derivative)
+}
+
+grad <- function(x, M, var_cnt_data, h){
+  gradient <- c()
+  for(i in (1:length(x))){
+    new_gradient <- first_derivative_i(x, M, var_cnt_data, h, i)
+    gradient <- c(gradient, new_gradient)
+
+  }
+  return(gradient)
+}
+
+second_derivative_i_j <- function(x, M, var_cnt_data, h, i, j){
+  new_x <- x
+  new_x[j] <- x[j] + h
+  second_derivative <- (first_derivative_i(new_x, M, var_cnt_data, h, i) - first_derivative_i(x, M, var_cnt_data, h, i))/h
+  return(second_derivative)
+}
+
+hessian <- function(x, M, var_cnt_data, h){
+  H <- matrix(0, 2*M+1, 2*M+1)
+  for(i in 1: (2*M+1)){
+    for(j in 1: (2*M+1)){
+      if( (i != j) & (i%%M != j%%M) & (i!= (2*M+1)) & (j!=(2*M+1))) next
+      H[i,j] = second_derivative_i_j(x, M, var_cnt_data, h, i, j)
+    }
+  }
+  return(H)
+}
+
+```
+
+```{r}
+n_var <- 5 
+M <- n_var
+n_ind <- 100
+c <- 1
+scalar = 100
+data <- simulate_binary_data(n_ind, n_var, c, scalar)
+var_cnt_data <- simulate_binary_data_summary(data, n_ind, n_var, c, scalar)
+```
+
+
+```{r}
+library(matrixcalc)
+i <- 0
+h <- 1e-9
+lambda <- 0.01
+x_0 <- c(data$beta, c)
+grad_norm <- norm(grad(x_0, M, var_cnt_data, h), type = "2")
+# grad_norm <- norm(grad(x_0, M, var_cnt_data), type = "2")
+while(grad_norm > 1e-4){
+  i <- i+1
+  print(paste('-------------ROUND ', i, '----------------------'))
+  gradient <- grad(x_0, M, var_cnt_data, h)
+  # gradient <- grad(x_0, M, var_cnt_data)
+  print('gradient:')
+  print(gradient)
+  H <- hessian(x_0, n_var, var_cnt_data, h)
+  # H <- hessian(x_0, n_var, var_cnt_data)
+  print('hessian diagonal:')
+  print(diag(H))
+  H <- H  + lambda*diag(rep(1, (2*M +1))) 
+  # H <- H + diag(lambda * diag(H)) # L2 - ridge
+  # H <- H  - diag(lambda * sign(diag(H))) # L1 -lasso
+  delta_x <- solve(H, -gradient)
+  print('delta x:')
+  print(delta_x)
+  x_1 <- x_0 + delta_x
+  gradient_1 <- grad(x_1, M, var_cnt_data, h)
+  # gradient_1 <- grad(x_1, M, var_cnt_data)
+  print('new gradient:')
+  print(gradient_1)
+  grad_norm <- norm(gradient_1, type = "2")
+  print(grad_norm)
+  x_0 <- x_1
+  print('x_0:')
+  print(x_0)
+  print('LL_0:')
+  print(ll_0(var_cnt_data[,'AC_total'], var_cnt_data[,'AC_case1'], var_cnt_data['AC_case2'], x_1[1:M], x_1[(M+1):(2*M)], x_1[(2*M+1)]))
+}
+LL_0 <- ll_0(var_cnt_data[,'AC_total'], var_cnt_data[,'AC_case1'], var_cnt_data['AC_case2'], x_1[1:M], x_1[(M+1):(2*M)], x_1[(2*M+1)])
+LL_0
+```
+## Alternative hypothesis
+```{r}
+create_cell_name <- function(pheno_name){
+  return(c(paste0(pheno_name,'-Yes'), paste0(pheno_name,'-No')))
+}
+
+simulate_binary_data <- function(var_info){
+  # Generate cell counts
+  cell_cnts <- c(var_info[1,'k11'], var_info[1,'k10'], var_info[1,'k01'], var_info[1,'k00'], var_info[1,'n11']-var_info[1,'k11'], var_info[1,'n10']-var_info[1,'k10'], var_info[1,'n01']-var_info[1,'k01'], var_info[1,'n00']-var_info[1,'k00'])
+  
+  # Input the observed counts
+  observed_counts <- array(cell_cnts, dim = c(2, 2, 2), dimnames = list(create_cell_name(pheno1), create_cell_name(pheno2), c("Var-Yes", "Var-No")))
+  # print(observed_counts)
+  
+  # Synthesize data
+  bin_data = c()
+  for(i in 1:2){
+    for(j in 1:2){
+      for(k in 1:2){
+        temp <- rep(c(i==1,j==1,k==1), observed_counts[i,j,k])
+        bin_data <- c(bin_data, temp)
+      }
+    }
+  }
+  bin_data <- data.frame(matrix(bin_data, ncol=3, byrow=TRUE))
+  colnames(bin_data) <- c('pheno1', 'pheno2', 'Var')
+  return(bin_data)
+}
+```
+
+
+
+```{r}
+var_cnt_data <- var_cnt_data %>%
+  mutate(k10 = AC_case1 - k11,
+         k01 = AC_case2 - k11,
+         n10 = n_cases1 - n11,
+         n01 = n_cases2 - n11) %>%
+  mutate(k00 = AC_total - k11 - k01 - k10,
+         n00 = n_controls1 - n01,
+         )
+```
+
+```{r}
+ll_1 <- c()
+alpha_0 <- data.frame(matrix(matrix(ncol = 12, nrow = 0)))
+for(i in 1:nrow(var_cnt_data)){
+  bin_data <- simulate_binary_data(var_cnt_data[i,])
+  
+  ## log likelihood under alternative hypothesis
+  log_1 <- glm(Var ~ pheno1 + pheno2,family=binomial(link='logit'),data=bin_data)
+  alpha <- log_1$coefficients
+  ll_1_temp <- AC*alpha[1] + AC_1*alpha[2] + AC_2*alpha[3] - n_00*log(exp(alpha[1]+1)+1) - n_10*log(exp(alpha[1]+alpha[2])+1)- n_01*log(exp(alpha[1]+alpha[3])+1) - n_01*log(exp(alpha[1]+alpha[2]+alpha[3])+1)
+  ll_1 <- c(ll_1, ll_1_temp)
+}
+LL_1 <- sum(ll_1)
+LL_1
+```
+
+

@@ -1,0 +1,123 @@
+---
+title: "Comparison"
+output: html_document
+date: "2024-03-31"
+---
+
+## Load gene-level summary data
+```{r}
+`%+%` <- function(x, y)  mapply(sum, x, y, MoreArgs = list(na.rm = TRUE))
+data <- read_delim(paste0(data_path, 'pleiotropy_2024_gene_burden_sig_cnt_summary.txt.bgz'), delim = '\t') %>%
+  mutate(n_domain_associated = ((n_pheno_group_sig_Biomarkers > 0) %+% 
+      (n_pheno_group_sig_Brain > 0) %+%
+      (n_pheno_group_sig_Diet > 0) %+% 
+      (n_pheno_group_sig_Diseases > 0) %+%
+      (n_pheno_group_sig_Mental > 0) %+%
+      (n_pheno_group_sig_Physical > 0))) %>%
+  mutate(n_disease_domain_associated = 
+           ((n_disease_group_sig_A > 0) %+% (n_disease_group_sig_H1 > 0) %+% (n_disease_group_sig_M > 0) %+%
+            (n_disease_group_sig_C > 0) %+% (n_disease_group_sig_H2 > 0) %+% (n_disease_group_sig_N > 0) %+%
+            (n_disease_group_sig_D > 0) %+% (n_disease_group_sig_I > 0) %+% (n_disease_group_sig_O > 0) %+%
+            (n_disease_group_sig_E > 0) %+% (n_disease_group_sig_J > 0) %+% (n_disease_group_sig_Q > 0)%+%
+            (n_disease_group_sig_F > 0) %+% (n_disease_group_sig_K > 0) %+% (n_disease_group_sig_R > 0) %+%
+            (n_disease_group_sig_G > 0) %+% (n_disease_group_sig_L > 0)),
+         n_disease_associated = 
+           ((n_disease_group_sig_A ) %+% (n_disease_group_sig_H1 ) %+% (n_disease_group_sig_M ) +
+            (n_disease_group_sig_C ) %+% (n_disease_group_sig_H2 ) %+% (n_disease_group_sig_N ) +
+            (n_disease_group_sig_D ) %+% (n_disease_group_sig_I ) %+% (n_disease_group_sig_O ) +
+            (n_disease_group_sig_E ) %+% (n_disease_group_sig_J ) %+% (n_disease_group_sig_Q )+
+            (n_disease_group_sig_F ) %+% (n_disease_group_sig_K ) %+% (n_disease_group_sig_R ) +
+            (n_disease_group_sig_G ) %+% (n_disease_group_sig_L )))
+write_csv(data, paste0(data_path, 'pleiotropy_2024_gene_burden_sig_cnt_summary_annotated.csv'))
+```
+
+```{r}
+# Number/Proportion of genes with associations
+N_table <- data  %>%
+  group_by(annotation) %>%
+  dplyr::summarize(
+    total_gene = n(),
+    associated = sum(n_sig_gene > 0, na.rm=T),
+    pleiotropic = sum(n_sig_gene > 1, na.rm=T),
+    multi_domain = sum(n_domain_associated > 1, na.rm=T),
+    domain_specific = sum(n_domain_associated == 1 & n_sig_gene > 1, na.rm=T),
+    trait_specific = sum(n_sig_gene == 1, na.rm=T),
+    non_associated = sum(n_sig_gene == 0, na.rm=T))
+print(N_table)
+p_table <- data   %>%
+  group_by(annotation) %>%
+  dplyr::summarize(
+    p_total_gene = n()/n(),
+    p_associated = percent(sum(n_sig_gene > 0, na.rm=T)/n(), accuracy = 0.01),
+    p_pleiotropic = percent(sum(n_sig_gene > 1, na.rm=T)/sum(n_sig_gene > 0, na.rm=T), accuracy = 0.01),
+    p_multi_domain = percent(sum(n_domain_associated > 1, na.rm=T)/sum(n_sig_gene > 0, na.rm=T), accuracy = 0.01),
+    p_domain_specific = percent(sum(n_domain_associated == 1 & n_sig_gene > 1, na.rm=T)/sum(n_sig_gene > 0, na.rm=T), accuracy = 0.01),
+    p_trait_specific = percent(sum(n_sig_gene == 1, na.rm=T)/sum(n_sig_gene > 0, na.rm=T), accuracy = 0.01),
+    p_non_associated = percent(sum(n_sig_gene == 0, na.rm=T)/n(), accuracy = 0.01))
+print(p_table)
+table <- N_table %>%
+  merge(., p_table, by = 'annotation') %>%
+  mutate(annotation = factor(annotation, levels=annotation_types2))
+write_csv(table, paste0(result_path, 'gene_summary_comparison_table1.csv'))
+```
+
+```{r}
+# Number/Proportion of genes with associations
+N_table <- data  %>%
+  group_by(annotation) %>%
+  dplyr::summarize(
+    total_gene = n(),
+    disease_associated = sum(n_disease_associated > 0, na.rm=T),
+    pleiotropic = sum(n_disease_associated > 1, na.rm=T),
+    multi_domain = sum(n_disease_domain_associated > 1, na.rm=T),
+    domain_specific = sum(n_disease_domain_associated == 1 & n_disease_associated > 1, na.rm=T),
+    disease_specific = sum(n_disease_associated == 1, na.rm=T))
+print(N_table)
+p_table <- data   %>%
+  group_by(annotation) %>%
+  dplyr::summarize(
+    p_total_gene = n()/n(),
+    p_associated = percent(sum(n_disease_associated > 0, na.rm=T)/n(), accuracy = 0.01),
+    p_pleiotropic = percent(sum(n_disease_associated > 1, na.rm=T)/sum(n_disease_associated > 0, na.rm=T), accuracy = 0.01),
+    p_multi_domain = percent(sum(n_disease_domain_associated > 1, na.rm=T)/sum(n_disease_associated > 0, na.rm=T), accuracy = 0.01),
+    p_domain_specific = percent(sum(n_disease_domain_associated == 1 & n_disease_associated > 1, na.rm=T)/sum(n_disease_associated > 0, na.rm=T), accuracy = 0.01),
+    p_trait_specific = percent(sum(n_disease_associated == 1, na.rm=T)/sum(n_disease_associated > 0, na.rm=T), accuracy = 0.01))
+print(p_table)
+table <- N_table %>%
+  merge(., p_table, by = 'annotation') %>%
+  mutate(annotation = factor(annotation, levels=annotation_types2))
+write_csv(table, paste0(result_path, 'gene_summary_comparison_table1_disease_version.csv'))
+```
+
+```{r}
+# Number/Proportion of genes with associations
+N_table <- data  %>%
+  group_by(gene_symbol) %>%
+  dplyr::summarize(
+    total_gene = n(),
+    associated = sum(any(n_sig_gene > 0), na.rm=T),
+    pleiotropic = sum(any(n_sig_gene > 1), na.rm=T),
+    multi_domain = sum(any(n_domain_associated > 1), na.rm=T),
+    domain_specific = sum(any(n_domain_associated == 1), na.rm=T),
+    trait_specific = sum(any(n_sig_gene == 1), na.rm=T),
+    non_associated = sum(any(n_sig_gene == 0), na.rm=T))
+print(N_table)
+p_table <- data   %>%
+  group_by(annotation) %>%
+  dplyr::summarize(
+    p_total_gene = n()/n(),
+    p_associated = percent(sum(n_sig_gene > 0, na.rm=T)/n(), accuracy = 0.01),
+    p_pleiotropic = percent(sum(n_sig_gene > 1, na.rm=T)/sum(n_sig_gene > 0, na.rm=T), accuracy = 0.01),
+    p_multi_domain = percent(sum(n_domain_associated > 1, na.rm=T)/sum(n_sig_gene > 0, na.rm=T), accuracy = 0.01),
+    p_domain_specific = percent(sum(n_domain_associated == 1, na.rm=T)/sum(n_sig_gene > 0, na.rm=T), accuracy = 0.01),
+    p_trait_specific = percent(sum(n_sig_gene == 1, na.rm=T)/sum(n_sig_gene > 0, na.rm=T), accuracy = 0.01),
+    p_non_associated = percent(sum(n_sig_gene == 0, na.rm=T)/n(), accuracy = 0.01))
+print(p_table)
+table <- N_table %>%
+  merge(., p_table, by = 'annotation') %>%
+  mutate(annotation = factor(annotation, levels=annotation_types2))
+write_csv(table, paste0(result_path, 'gene_summary_comparison_table1.csv'))
+```
+
+
+

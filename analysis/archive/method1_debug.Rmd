@@ -1,0 +1,158 @@
+---
+title: "test_debug"
+author: "Wenhan Lu"
+date: "6/8/2022"
+output: html_document
+---
+## load sources
+```{r}
+setwd('~/Dropbox (Partners HealthCare)/analysis/ukb_exomes_pleiotropy/')
+source('~/Dropbox (Partners HealthCare)/ukbb_exomes_pleiotropy/R/constants.R')
+source('~/Dropbox (Partners HealthCare)/ukbb_exomes_pleiotropy/R/simulations.R')
+```
+
+## Data stored
+```{r}
+gene_name <- 'ANK1'
+TEST <- 'burden'
+result <- read_csv(paste0(result_path, paste0('continuous_pop_AF_1e_4_500k_syn_var_corr_', TEST,'_results.csv')))
+beta <- read_csv(paste0(result_path, paste0('continuous_pop_AF_1e_4_500k_syn_var_corr_', TEST,'_beta.csv')))
+sub_beta <- beta %>%
+  filter(gene == gene_name & annotation == 'synonymous')
+sub_result <- result %>%
+  filter(gene == gene_name & annotation == 'Synonymous')
+
+
+var_file <- paste0('~/Downloads/corr_testing_', TEST, '_var_n_cases_over_300k.txt.bgz')
+gene_file <- paste0('~/Downloads/corr_testing_', TEST, '_gene_n_cases_over_300k.txt.bgz')
+pheno_corr <- read_delim('~/Downloads/corr_estimate_syn_var_full_500k.txt.bgz', delim = '\t',col_types = cols(i_phenocode = col_character(), j_phenocode = col_character())) %>%
+  select(1:3, 5, 12) %>%
+  mutate(corr=entry)
+var_data <- fread(cmd = paste0('gunzip -cq ', var_file)) %>%
+  filter(gene ==gene_name & annotation == 'synonymous')
+gene_data <- fread(cmd = paste0('gunzip -cq ', gene_file)) %>% filter(gene_symbol == gene_name)
+```
+
+```{r}
+pheno_corr <- read_delim('~/Downloads/corr_estimate_syn_var_full_500k.txt.bgz', delim = '\t',col_types = cols(i_phenocode = col_character(), j_phenocode = col_character())) %>%
+  select(1:3, 5, 12) %>%
+  mutate(corr=entry)
+```
+
+## Select phenotypes
+```{r}
+view(sub_result)
+```
+
+```{r}
+p1 <- '30240'
+p2 <- '30290'
+pheno_pair = c(p1, p2)
+```
+
+
+## look at betas
+```{r}
+test_beta <- sub_beta %>%
+  filter(pheno1 == p1 & pheno2 ==p2)
+
+plot(test_beta$b1*2*sqrt(test_beta$AF*(1-test_beta$AF)), 
+     test_beta$b2*2*sqrt(test_beta$AF*(1-test_beta$AF)),
+     xlab = p1,
+     ylab = p2
+     )
+```
+## function (1)
+```{r}
+get_real_data <- function(var_data, gene_data, phenolist, pheno_corr){
+  corr <- pheno_corr %>% filter((i_phenocode %in% phenolist) & (j_phenocode %in% phenolist) & (i_phenocode != j_phenocode))
+  n_ind <- gene_data %>% filter(phenocode %in% phenolist) %>% select(phenocode, n_cases) %>% distinct()
+  sub <- var_data %>% 
+    filter(phenocode %in% phenolist) %>% 
+    pivot_wider(id_col = c('locus', 'alleles', 'annotation'), names_from = 'phenocode', values_from = 'BETA')
+  sub <- var_data %>% 
+    select(locus, alleles, annotation, AF, AC, gene) %>% 
+    unique() %>% merge(., sub, by = c('locus', 'alleles', 'annotation')) %>% 
+    # filter(complete.cases(.)) %>%
+    mutate(annotation = if_else(annotation %in% c('missense', 'LC'), 'missense|LC', annotation))
+  return(list(corr=corr, sub=sub, n_ind=n_ind))
+}
+```
+
+```{r}
+test_data <- get_real_data(var_data %>% filter(AF < 0.0001), gene_data, pheno_pair, pheno_corr)
+head(test_data$sub)
+test_data$corr
+test_data$n_ind
+```
+
+## function (2)
+```{r}
+var_test <- function(data, pheno_corr, pheno_list, n_ind, gene, sig_level=0.05){
+  results <- data.frame()
+  beta <- data.frame()
+  pheno_list <- colnames(data)[-(1:6)]
+  n <- n_ind
+  
+  for(i in (1: (length(pheno_list)-1))+6){
+    for(j in (i: (length(pheno_list)+6))){
+      if(j == i) next
+      if(length(pheno_list)<2) break
+      if(nrow(data) == 0) break
+      pheno1 <- colnames(data)[i]
+      pheno2 <- colnames(data)[j]
+      # n_ind2 <- n_ind %>% filter(phenocode %in% c(pheno1, pheno2)) %>% summarise(mean=mean(n_cases))
+      n_ind <- n %>% filter(phenocode %in% c(pheno1, pheno2)) %>% summarise(mean=mean(n_cases))
+      n_ind <- floor(n_ind$mean)
+      
+      sub <- data %>% select(1:6, pheno1, pheno2) %>% filter(complete.cases(.))
+      sub <- as.data.frame(sub)
+      if(nrow(sub) == 0){next}
+      if(nrow(sub)>1){
+        A <- 2*diag(sub$AF)
+      }else{
+        A <- as.matrix(2*sub$AF)
+      }
+      b1_hat <- t(as.matrix(sub[,pheno1]))
+      b2_hat <- t(as.matrix(sub[,pheno2]))
+      r <- ifelse(is.numeric(pheno_corr), pheno_corr, c(unlist(pheno_corr[((pheno_corr$i_phenocode==pheno1) &(pheno_corr$j_phenocode==pheno2)),'corr'])))
+      c_hat <- get_c_hat(b1_hat, b2_hat, A, r)
+      lambda <- get_likelihood_test_stats(n_ind, r, b1_hat, b2_hat, c_hat, A)
+      pvalue <- 1 - pchisq(lambda, length(b1_hat)-1)
+      temp <- data.frame(pheno1, pheno2, c_hat, lambda, pvalue, gene, length(b1_hat))
+      beta_temp <- data.frame(b1 = unname(t(b1_hat)), b2 = unname(t(b2_hat)), AF = c(diag(A))) %>% 
+        mutate(pheno1 = pheno1, pheno2  = pheno2, gene = gene)
+      results <- rbind(results, temp)
+      beta <- rbind(beta, beta_temp)
+    }
+  }
+  if(nrow(results)>0){
+    colnames(results) <- c('pheno1', 'pheno2', 'c_hat', 'lambda', 'pvalue', 'gene', 'n_var')
+    return(list(results = results, beta = beta))
+  }
+}
+
+```
+
+
+```{r}
+test_result <- var_test(test_data$sub, test_data$corr, pheno_pair, test_data$n_ind, gene_name)
+test_result$results
+```
+## check by step
+```{r}
+data = test_data$sub 
+pheno_corr = test_data$corr 
+pheno_list = pheno_pair 
+n_ind = test_data$n_ind 
+gene = gene_name 
+sig_level=0.05
+```
+
+```{r}
+n <- n_ind
+n_ind <- n %>% filter(phenocode %in% c(p1, p2)) %>% summarise(mean=mean(n_cases))
+n_ind <- floor(n_ind$mean)
+n_ind
+```
+
