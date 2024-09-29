@@ -1,1 +1,1 @@
-# ukbb_exomes_pleiotropy
+# ALLSPICE
