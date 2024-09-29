@@ -96,21 +96,28 @@ single_test <- function(data, pheno_corr, pheno1, pheno2, n_ind, gene){
 # phenotype1: 30070 - Red blood cell (erythrocyte) distribution width
 # phenotype2: 30110 - Platelet distribution width
 # phenotypic correlation:
-genename <- 'CD36'
-phenocode1 <- '30070'
-phenocode2 <- '30110'
+pheno_corr <- read_delim(paste0(data_path, 'correlation_table_phenos_500k.txt.bgz'), delim = '\t',
+                         col_types = cols(i_pheno = col_character(), j_pheno = col_character())) %>%
+  select(3:5) %>%
+  mutate(corr=entry)
+gene_data <- read_delim(paste0(data_path, 'corr_testing_burden_gene_500k.txt.bgz'), delim = '\t')
+genename <- 'PIEZO1'
+phenocode1 <- 30070
+phenocode2 <- 30240
 phenolist <- c(phenocode1, phenocode2)
-phenocorr_300k <- -0.01419300
-phenocorr_500k <- -0.01566100
-mean_n_cases_300k <- 273539.5
-mean_n_cases_500k <- 473357
+pheno_corr <- -0.017777
+# phenocorr_300k <- -0.01419300
+# phenocorr_500k <- -0.01566100
+# mean_n_cases_300k <- 273539.5
+# mean_n_cases_500k <- 473357
 
 # User specify:
 TRANCHE <- '300k' # or 300k
 PATH <- '~/Downloads/'
 
 ###### Run Test #############
-n_ind <- if_else(TRANCHE == '300k', mean_n_cases_300k, mean_n_cases_500k)
-pheno_corr <- if_else(TRANCHE == '300k', phenocorr_300k, phenocorr_500k)
-var_data <- read_csv(paste0('~/Downloads/var_subset_cd36_', TRANCHE,'_modified_for_test.csv'))
+n_ind <- mean(c(465364, 473360 ))
+# pheno_corr <- if_else(TRANCHE == '300k', phenocorr_300k, phenocorr_500k)
+var_data <- fread('gunzip -cq ~/Downloads/corr_testing_burden_var_0.01_500k.txt.bgz') %>%
+  filter(AC <=5)
 single_test(var_data, pheno_corr, phenocode1, phenocode2, n_ind, genename)

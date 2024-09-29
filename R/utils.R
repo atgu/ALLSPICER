@@ -1,13 +1,6 @@
 setwd('~/Dropbox (Partners HealthCare)/analysis/ukb_exomes_pleiotropy/')
 source('~/Dropbox (Partners HealthCare)/github_repo/ukbb_exomes_pleiotropy/R/constants.R')
 
-all_n_var <- c(5, 10, 20, 100)
-all_c <- c(0, 0.2, 0.4, 0.6, 0.8, 1)
-all_r <- c(-1, -0.8, -0.5, -0.2, -0.1, 0, 0.1, 0.2,  0.5, 0.8, 1)
-# all_pi <- c(0, 0.2, 0.5, 0.8, 1)
-all_pi <- c(0.5, 0.8)
-all_n_ind <- 1000
-
 # Basic simulation formulas
 get_single_geno <- function(cnt, n_ind){
   if(n_ind < cnt) stop('n_ind should be greater than cnt')
@@ -152,8 +145,6 @@ figure_sim_test_qq <- function(test_data, name=NULL, save=TRUE){
            expected = -(log10(rank / (n+1))))
   
   figure <- test_data %>% 
-    mutate(n_var = factor(n_var, levels = c(5, 20, 100), labels= paste('N(var) = ', c(5, 20, 100))),
-           c = factor(c, levels = c(0, 0.2, 0.4, 0.6, 0.8, 1), labels= paste('c = ', c(0, 0.2, 0.4, 0.6, 0.8, 1)))) %>%
     ggplot+ aes(y = observed, x = expected, color = factor(r)) + 
     geom_point() + 
     geom_abline(intercept = 0, slope = 1) +
@@ -434,7 +425,7 @@ var_test <- function(data, pheno_corr, pheno_list, n_ind, gene, sig_level=0.05){
   beta <- data.frame()
   pheno_list <- colnames(data)[-(1:6)]
   n <- n_ind
-  
+
   for(i in (1: (length(pheno_list)-1))+6){
     for(j in (i: (length(pheno_list)+6))){
       if(j == i) next
@@ -442,10 +433,11 @@ var_test <- function(data, pheno_corr, pheno_list, n_ind, gene, sig_level=0.05){
       if(nrow(data) == 0) break
       pheno1 <- colnames(data)[i]
       pheno2 <- colnames(data)[j]
-      # n_ind2 <- n_ind %>% filter(phenocode %in% c(pheno1, pheno2)) %>% summarise(mean=mean(n_cases))
-      n_ind <- n %>% filter(phenocode %in% c(pheno1, pheno2)) %>% summarise(mean=mean(n_cases))
+      n_ind <- n %>%
+        filter(phenoname %in% c(pheno1, pheno2)) %>%
+        summarise(mean=mean(n_cases))
       n_ind <- floor(n_ind$mean)
-      
+
       sub <- data %>% select(1:6, pheno1, pheno2) %>% filter(complete.cases(.))
       sub <- as.data.frame(sub)
       if(nrow(sub) == 0){next}
@@ -456,12 +448,12 @@ var_test <- function(data, pheno_corr, pheno_list, n_ind, gene, sig_level=0.05){
       }
       b1_hat <- t(as.matrix(sub[,pheno1]))
       b2_hat <- t(as.matrix(sub[,pheno2]))
-      r <- ifelse(is.numeric(pheno_corr), pheno_corr, c(unlist(pheno_corr[((pheno_corr$i_phenocode==pheno1) &(pheno_corr$j_phenocode==pheno2)),'corr'])))
+      r <- ifelse(is.numeric(pheno_corr), pheno_corr, c(unlist(pheno_corr[((pheno_corr$i_phenoname==pheno1) &(pheno_corr$j_phenoname==pheno2)),'corr'])))
       c_hat <- get_c_hat(b1_hat, b2_hat, A, r)
       lambda <- get_likelihood_test_stats(n_ind, r, b1_hat, b2_hat, c_hat, A)
-      pvalue <- 1 - pchisq(lambda, length(b1_hat)-1)
+      pvalue <- 1 - pchisq(as.numeric(lambda), length(b1_hat)-1)
       temp <- data.frame(pheno1, pheno2, c_hat, lambda, pvalue, gene, length(b1_hat))
-      beta_temp <- data.frame(b1 = unname(t(b1_hat)), b2 = unname(t(b2_hat)), AF = c(diag(A))) %>% 
+      beta_temp <- data.frame(locus=sub$locus, alleles= sub$alleles,b1 = unname(t(b1_hat)), b2 = unname(t(b2_hat)), AF = c(diag(A))) %>%
         mutate(pheno1 = pheno1, pheno2  = pheno2, gene = gene)
       results <- rbind(results, temp)
       beta <- rbind(beta, beta_temp)
@@ -476,8 +468,9 @@ var_test <- function(data, pheno_corr, pheno_list, n_ind, gene, sig_level=0.05){
 get_test_result <- function(data, r, pheno_corr, pheno_list, n_ind, gene){
   full_results <- data.frame()
   full_beta <- data.frame()
-  for(i in names(table(data$annotation))){
-    test <- var_test(data %>% filter(annotation == i), r, pheno_list, n_ind, gene) 
+  for(i in unique(data$annotation) %>% unlist()){
+    print(i)
+    test <- var_test(as.data.frame(data) %>% filter(annotation == i), r, pheno_list, n_ind, gene)
     if(is.null(test)) next
     results <- test$results %>% mutate(annotation = i)
     beta <- test$beta %>% mutate(annotation = i)
@@ -485,9 +478,6 @@ get_test_result <- function(data, r, pheno_corr, pheno_list, n_ind, gene){
     full_beta <- rbind(full_beta, beta)
   }
   if(nrow(full_results)>0){
-    full_results <- full_results %>% 
-      merge(., pheno_corr, by.x = c("pheno1", "pheno2"), by.y = c("i_phenocode", "j_phenocode")) %>% 
-      mutate(annotation = factor(annotation, levels = annotation_types, labels = annotation_names))
     return(list(results = full_results, beta = full_beta))
   }
 }
@@ -590,10 +580,10 @@ figure_real_data_beta <- function(beta, name=NULL, af_adjust = TRUE, save=TRUE){
   return(figure)
 }
 
-write_data_fig_real <- function(results, beta, name, save_file = TRUE, save_fig = TRUE){
+write_data_fig_real <- function(results, name, save_file = TRUE, save_fig = TRUE){
   if(save_file){
     write_csv(results, file=paste0(result_path, name, '_results.csv'))
-    write_csv(beta, file=paste0(result_path, name, '_beta.csv'))
+    # write_csv(beta, file=paste0(result_path, name, '_beta.csv'))
   }
   if(save_fig){
     figure_real_data_qq(results, name, save = save_fig)
@@ -608,24 +598,16 @@ get_gene_level_data <- function(data, gene, phenolist){
   gene_result <- data %>% 
     filter(phenoname %in% phenolist$phenoname) %>%
     filter(gene_symbol==gene) %>%
-    select(annotation, phenocode, sig_gene)
-    # select(annotation, phenocode, description, sig_gene)
-  gene_all <- gene_result %>% 
-    # group_by(phenocode, description) %>% 
-    group_by(phenocode) %>% 
-    summarise(sig_gene = if_else(sum(sig_gene, na.rm = T)>0, 1, 0)) %>%
-    mutate(annotation= 'all') %>%
-    select(colnames(gene_result))
-  gene_result <- rbind(gene_result, gene_all)
+    select(annotation, phenoname, sig_gene)
   return(gene_result)
 }
 
 add_gene_level_data <- function(gene_level_data, variant_test_data){
   test_full <- variant_test_data %>% 
     merge(., gene_level_data, by.x = c('annotation', 'pheno1'), 
-          by.y = c('annotation', 'phenocode'), all = T) %>%
+          by.y = c('annotation', 'phenoname'), all = T) %>%
     merge(., gene_level_data, by.x = c('annotation', 'pheno2'), 
-          by.y = c('annotation', 'phenocode'), all = T) %>%
+          by.y = c('annotation', 'phenoname'), all = T) %>%
     mutate(sig_gene.x = if_else(is.na(sig_gene.x), 0, sig_gene.x),
            sig_gene.y = if_else(is.na(sig_gene.y), 0, sig_gene.y),) %>%
     mutate(sig_gene = sig_gene.x + sig_gene.y) %>%
