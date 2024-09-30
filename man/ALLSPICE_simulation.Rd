@@ -24,8 +24,8 @@ ALLSPICE_simulation(n_ind, n_var, c, r, pi, sigma, mle = TRUE, null = TRUE)
 \item{null}{whether to simulate data under the null hypothesis (no linear relationship) or the alternative hypothesis}
 }
 \value{
-A list of two pieces of results: 
-1) ALLSPICE test results 
+A list of two pieces of results:
+1) ALLSPICE test results
 2) effect size table: true effect size simulated, effect size estimate from linear model, effect size estimated from MLE
 }
 \description{

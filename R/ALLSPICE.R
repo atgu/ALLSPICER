@@ -1,10 +1,10 @@
 #' ALLSPICE
-#' 
+#'
 #' ALLSPICE (ALLelic Spectrum of Pleiotropy Informed Correlated Effects)
 #'
-#' @param data Input data with number of rows indicating number of variants, three columns are required: 
-#' 1) effect sizes of variants for phenotype 1, 2) effect sizes of variants for phenotype 2, 3) allele frequency of variants 
-#' Note: this should include variants from ONE gene that is associated with the two phenotypes, 
+#' @param data Input data with number of rows indicating number of variants, three columns are required:
+#' 1) effect sizes of variants for phenotype 1, 2) effect sizes of variants for phenotype 2, 3) allele frequency of variants
+#' Note: this should include variants from ONE gene that is associated with the two phenotypes,
 #' preferably of the SAME functional category after being filtered to variants with allele frequency below a certain threshold (e.g. 1e-4)
 #' @param pheno_corr phenotypic correlation between the two phenotypes being tested
 #' @param n_ind total number of individuals
@@ -15,8 +15,14 @@
 #' @param beta2_field field name for effect sizes of variants on phenotype 2, default `BETA2`
 #' @param af_field field name for allele frequencies of variants, default `AF`
 #'
-#' @return A list of summary statistics from ALLSPICE test 
+#' @return A list of summary statistics from ALLSPICE test
 #' including phenotype names, gene names, MLE of slope c, ALLSPICE test statistic - lambda, pvalue from a chi-square distribution, total number of variants being tested
+#' @import magrittr
+#' @import readr
+#' @import mvtnorm
+#' @import stats
+#' @import dplyr
+#' @import purrr
 #' @export
 
 ALLSPICE <- function(data, pheno_corr, n_ind, gene='GENENAME', pheno1='PHENO1', pheno2='PHENO2', beta1_field = 'BETA1', beta2_field = 'BETA2', af_field = 'AF'){
@@ -26,7 +32,8 @@ ALLSPICE <- function(data, pheno_corr, n_ind, gene='GENENAME', pheno1='PHENO1', 
     stop("Effect sizes of variants on the two phenotypes or Allele frequency is missing from the data, please check")
   }
   data <- format_ALLSPICE_data(data=data, beta1_field = beta1_field, beta2_field = beta2_field, af_field = af_field)
-  data <- data %>% dplyr::select('beta1', 'beta2', 'AF') %>% dplyr::filter(complete.cases(.))
+  data <- data %>% dplyr::select('beta1', 'beta2', 'AF')
+  data <- data[complete.cases(data), ]
   if(nrow(data)>1){
     A <- 2*diag(data$AF)
   }else{
@@ -45,7 +52,7 @@ ALLSPICE <- function(data, pheno_corr, n_ind, gene='GENENAME', pheno1='PHENO1', 
 
 
 #' ALLSPICE_simulation
-#' 
+#'
 #' Simulate data and run ALLSPICE
 #'
 #' @param n_ind total number of individuals
@@ -57,9 +64,9 @@ ALLSPICE <- function(data, pheno_corr, n_ind, gene='GENENAME', pheno1='PHENO1', 
 #' @param mle whether to use MLE of c to compute the test statistic, use true c value if FALSE
 #' @param null whether to simulate data under the null hypothesis (no linear relationship) or the alternative hypothesis
 #'
-#' @return A list of two pieces of results: 
-#' 1) ALLSPICE test results 
-#' 2) effect size table: true effect size simulated, effect size estimate from linear model, effect size estimated from MLE 
+#' @return A list of two pieces of results:
+#' 1) ALLSPICE test results
+#' 2) effect size table: true effect size simulated, effect size estimate from linear model, effect size estimated from MLE
 #' @export
 
 ALLSPICE_simulation <- function(n_ind, n_var, c, r, pi, sigma, mle = TRUE, null=TRUE){

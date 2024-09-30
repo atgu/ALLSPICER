@@ -6,6 +6,12 @@
 #' @param n_ind total number of individuals
 #'
 #' @return A binary vector representing the genotype information of `n_ind` individuals for a particular locus, where `cnt` entries has value 1.
+#' @import magrittr
+#' @import readr
+#' @import mvtnorm
+#' @import stats
+#' @import dplyr
+#' @import purrr
 #' @export
 get_single_geno <- function(cnt, n_ind){
   if(n_ind < cnt) stop('n_ind should be greater than cnt')

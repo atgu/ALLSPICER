@@ -17,9 +17,9 @@ ALLSPICE(
 )
 }
 \arguments{
-\item{data}{Input data with number of rows indicating number of variants, three columns are required: 
-1) effect sizes of variants for phenotype 1, 2) effect sizes of variants for phenotype 2, 3) allele frequency of variants 
-Note: this should include variants from ONE gene that is associated with the two phenotypes, 
+\item{data}{Input data with number of rows indicating number of variants, three columns are required:
+1) effect sizes of variants for phenotype 1, 2) effect sizes of variants for phenotype 2, 3) allele frequency of variants
+Note: this should include variants from ONE gene that is associated with the two phenotypes,
 preferably of the SAME functional category after being filtered to variants with allele frequency below a certain threshold (e.g. 1e-4)}
 
 \item{pheno_corr}{phenotypic correlation between the two phenotypes being tested}
@@ -39,7 +39,7 @@ preferably of the SAME functional category after being filtered to variants with
 \item{af_field}{field name for allele frequencies of variants, default `AF`}
 }
 \value{
-A list of summary statistics from ALLSPICE test 
+A list of summary statistics from ALLSPICE test
 including phenotype names, gene names, MLE of slope c, ALLSPICE test statistic - lambda, pvalue from a chi-square distribution, total number of variants being tested
 }
 \description{
