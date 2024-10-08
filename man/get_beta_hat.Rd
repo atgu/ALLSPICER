@@ -21,3 +21,11 @@ A 2x`n_var` matrix of estimated effect size information (first row corresponds t
 \description{
 simulation function: compute effect sizes estimated form linear regression model
 }
+\examples{
+AC <- get_ac_mat(n_var=100)
+A <- get_af_mat(AC=AC, n_ind=10000)
+X <- get_geno_mat(AC, n_ind=10000)
+b <- get_true_beta(n_var=100, c=0.6, pi=0.5, sigma=1, null=TRUE)
+Y <- get_pheno_pair(b=b, X=X, r=0.5)
+b_hat <- get_beta_hat(Y=Y, X=X, A=A, n_ind=10000)
+}

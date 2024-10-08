@@ -17,3 +17,6 @@ An `n_ind`x`m` matrix of genotype information of `n_ind` individuals and `m` var
 \description{
 simulation function: simulate genotype information for a set of loci with allele counts `AC`
 }
+\examples{
+geno_mat <- get_geno_mat(AC = c(20, 50, 10, 1, 5), n_ind = 10000)
+}

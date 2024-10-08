@@ -17,3 +17,6 @@ A `n_var`x`n_var` diagnal matrix of allele frequency information for `n_var` (di
 \description{
 simulation function: compute allele frequency information variants with allele counts stored in diagonal matrix `AC` from a population of sample size `n_ind`
 }
+\examples{
+af_mat <- get_af_mat(AC = c(20, 50, 10, 1, 5), n_ind = 10000)
+}

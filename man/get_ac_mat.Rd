@@ -17,3 +17,6 @@ A `n_var`x`n_var` diagnal matrix of allele count information for `n_var` variant
 \description{
 simulation function: simulate allele count information for `n_var` variants, with a maximum allele count `max_cnt`
 }
+\examples{
+ac_mat <- get_ac_mat(n_var=100, max_cnt = 100)
+}

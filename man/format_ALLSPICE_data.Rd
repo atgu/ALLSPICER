@@ -21,3 +21,7 @@ a data frame containing effect sizes of variants on two phenotypes and their all
 \description{
 data formatting function: format raw data to be loaded into ALLSPICE
 }
+\examples{
+data <- data.frame(x = rnorm(10), y = rnorm(10), z = runif(10, 0,1))
+data <- format_ALLSPICE_data(data=data, beta1_field = 'x', beta2_field = 'y', af_field = 'z')
+}

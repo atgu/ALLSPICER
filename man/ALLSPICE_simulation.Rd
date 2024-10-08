@@ -31,3 +31,7 @@ A list of two pieces of results:
 \description{
 Simulate data and run ALLSPICE
 }
+\examples{
+ALLSPICE_simulation(n_ind=10000, n_var=100, c=0.6, r=0.5, pi=0.5, sigma=1, mle = TRUE, null=TRUE)
+
+}

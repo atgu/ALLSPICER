@@ -45,3 +45,7 @@ including phenotype names, gene names, MLE of slope c, ALLSPICE test statistic -
 \description{
 ALLSPICE (ALLelic Spectrum of Pleiotropy Informed Correlated Effects)
 }
+\examples{
+data <- data.frame(x = rnorm(10), y = rnorm(10), z = runif(10, 0,1))
+ALLSPICE(data,pheno_corr=0.5,n_ind=10000,beta1_field='x',beta2_field='y',af_field='z')
+}
