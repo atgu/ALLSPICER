@@ -1,19 +1,17 @@
 Package: ALLSPICER
 Type: Package
-Title: Tool for ALLelic Spectrum of Pleiotropy Informed Correlated Effects
-Version: 0.1.0
-Author: Wenhan Lu
+Title: Tool for Heterogeneous Effects of Rare Variants Within Genes Associated with Traits
+Version: 0.1.8
+Authors@R: person(given = "Wenhan",
+                  family = "Lu",
+                  role = c("aut", "cre"),
+                  email = "wlu@broadinstitute.org")
 Maintainer: Wenhan Lu <wlu@broadinstitute.org>
-Description: A likelihood statistical test to identify allelic heterogeneity within a pleiotropic gene, defined as an imperfect correlation between the effects of variants within that gene on the two traits.It uses summary statistics from single-variant association tests and accounts for the phenotypic correlation. 
+Description: A likelihood statistical test to identify 
+    heterogeneity within a gene associated with multiple traits.
 License: MIT + file LICENSE
 Encoding: UTF-8
-LazyData: true
-Imports: dplyr,purrr,magrittr,readr,mvtnorm,stats
+Imports: dplyr, magrittr, readr, mvtnorm, stats
 RoxygenNote: 7.3.2
-Suggests: 
-    testthat (>= 3.0.0)
+Suggests: knitr, rmarkdown, testthat (>= 3.0.0)
 Config/testthat/edition: 3
-Authors@R: c(person(given = "Wenhan", 
-                    family = "Lu", 
-                    role = c("aut", "cre"), 
-                    email = "wlu@broadinstitute.org"))

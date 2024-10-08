@@ -17,12 +17,14 @@
 #'
 #' @return A list of summary statistics from ALLSPICE test
 #' including phenotype names, gene names, MLE of slope c, ALLSPICE test statistic - lambda, pvalue from a chi-square distribution, total number of variants being tested
-#' @import magrittr
+#' @examples
+#' data <- data.frame(x = rnorm(10), y = rnorm(10), z = runif(10, 0,1))
+#' ALLSPICE(data,pheno_corr=0.5,n_ind=10000,beta1_field='x',beta2_field='y',af_field='z')
 #' @import readr
 #' @import mvtnorm
-#' @import stats
-#' @import dplyr
-#' @import purrr
+#' @importFrom dplyr filter select if_else
+#' @importFrom magrittr %>% set_colnames
+#' @importFrom stats complete.cases pchisq runif rbinom rnorm
 #' @export
 
 ALLSPICE <- function(data, pheno_corr, n_ind, gene='GENENAME', pheno1='PHENO1', pheno2='PHENO2', beta1_field = 'BETA1', beta2_field = 'BETA2', af_field = 'AF'){
@@ -67,6 +69,9 @@ ALLSPICE <- function(data, pheno_corr, n_ind, gene='GENENAME', pheno1='PHENO1', 
 #' @return A list of two pieces of results:
 #' 1) ALLSPICE test results
 #' 2) effect size table: true effect size simulated, effect size estimate from linear model, effect size estimated from MLE
+#' @examples
+#' ALLSPICE_simulation(n_ind=10000, n_var=100, c=0.6, r=0.5, pi=0.5, sigma=1, mle = TRUE, null=TRUE)
+#'
 #' @export
 
 ALLSPICE_simulation <- function(n_ind, n_var, c, r, pi, sigma, mle = TRUE, null=TRUE){

@@ -1,4 +1,4 @@
-## Resubmission (Version 0.1.0)
+## Resubmission (Version 0.1.1)
 
 This is a resubmission of the package with the following changes:
 

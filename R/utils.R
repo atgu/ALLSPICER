@@ -6,12 +6,13 @@
 #' @param n_ind total number of individuals
 #'
 #' @return A binary vector representing the genotype information of `n_ind` individuals for a particular locus, where `cnt` entries has value 1.
-#' @import magrittr
+#' @examples
+#' geno <- get_single_geno(cnt = 100, n_ind = 10000)
 #' @import readr
 #' @import mvtnorm
-#' @import stats
-#' @import dplyr
-#' @import purrr
+#' @importFrom dplyr filter select if_else
+#' @importFrom magrittr %>% set_colnames
+#' @importFrom stats complete.cases pchisq runif rbinom rnorm
 #' @export
 get_single_geno <- function(cnt, n_ind){
   if(n_ind < cnt) stop('n_ind should be greater than cnt')
@@ -27,6 +28,8 @@ get_single_geno <- function(cnt, n_ind){
 #' @param n_ind total number of indicitions
 #'
 #' @return An `n_ind`x`m` matrix of genotype information of `n_ind` individuals and `m` variants
+#' @examples
+#' geno_mat <- get_geno_mat(AC = c(20, 50, 10, 1, 5), n_ind = 10000)
 #' @export
 
 get_geno_mat <- function(AC, n_ind){
@@ -43,6 +46,8 @@ get_geno_mat <- function(AC, n_ind){
 #' @param max_cnt maximum allele count, default 100
 #'
 #' @return A `n_var`x`n_var` diagnal matrix of allele count information for `n_var` variants
+#' @examples
+#' ac_mat <- get_ac_mat(n_var=100, max_cnt = 100)
 #' @export
 
 get_ac_mat <- function(n_var, max_cnt = 100){
@@ -59,6 +64,8 @@ get_ac_mat <- function(n_var, max_cnt = 100){
 #' @param n_ind total number of individuals in the population
 #'
 #' @return A `n_var`x`n_var` diagnal matrix of allele frequency information for `n_var` (dimension of `AC`) variants
+#' @examples
+#' af_mat <- get_af_mat(AC = c(20, 50, 10, 1, 5), n_ind = 10000)
 #' @export
 
 get_af_mat <-function(AC, n_ind){
@@ -78,6 +85,8 @@ get_af_mat <-function(AC, n_ind){
 #' @param null whether to simulate data under the null hypothesis (no linear relationship) or the alternative hypothesis
 #'
 #' @return A 2x`n_var` matrix of effect size information for `n_var` variants (first row corresponds to the first phenotype, second row corresponds to the second phenotype)
+#' @examples
+#' true_beta <- get_true_beta(n_var=100, c=0.6, pi=0.5, sigma=1, null=TRUE)
 #' @export
 
 get_true_beta <- function(n_var, c, pi, sigma, null=TRUE){
@@ -100,6 +109,11 @@ get_true_beta <- function(n_var, c, pi, sigma, null=TRUE){
 #' @param r phenotypic correlation between the two phenotypes
 #'
 #' @return A 2x`n_ind` matrix of phenotype information (first row corresponds to the first phenotype, second row corresponds to the second phenotype)
+#' @examples
+#' AC <- get_ac_mat(n_var=100)
+#' X <- get_geno_mat(AC, n_ind=10000)
+#' b <- get_true_beta(n_var=100, c=0.6, pi=0.5, sigma=1, null=TRUE)
+#' Y <- get_pheno_pair(b=b, X=X, r=0.5)
 #' @export
 
 get_pheno_pair <- function(b, X, r){
@@ -118,8 +132,14 @@ get_pheno_pair <- function(b, X, r){
 #' @param X genotype information
 #' @param A Allele frequency information
 #' @param n_ind total number of individuals
-#'
 #' @return A 2x`n_var` matrix of estimated effect size information (first row corresponds to the first phenotype, second row corresponds to the second phenotype)
+#' @examples
+#' AC <- get_ac_mat(n_var=100)
+#' A <- get_af_mat(AC=AC, n_ind=10000)
+#' X <- get_geno_mat(AC, n_ind=10000)
+#' b <- get_true_beta(n_var=100, c=0.6, pi=0.5, sigma=1, null=TRUE)
+#' Y <- get_pheno_pair(b=b, X=X, r=0.5)
+#' b_hat <- get_beta_hat(Y=Y, X=X, A=A, n_ind=10000)
 #' @export
 
 get_beta_hat <- function(Y, X, A, n_ind){
@@ -137,8 +157,17 @@ get_beta_hat <- function(Y, X, A, n_ind){
 #' @param c slope between the two sets of variant effect sizes, only applicable when `null` == TRUE
 #' @param r phenotypic correlation between the two phenotypes
 #' @param null whether to simulate data under the null hypothesis (no linear relationship) or the alternative hypothesis
-#'
 #' @return A 2x`n_var` matrix of MLE estimated effect size information (first row corresponds to the first phenotype, second row corresponds to the second phenotype)
+#' @examples
+#' AC <- get_ac_mat(n_var=100)
+#' A <- get_af_mat(AC=AC, n_ind=10000)
+#' X <- get_geno_mat(AC, n_ind=10000)
+#' b <- get_true_beta(n_var=100, c=0.6, pi=0.5, sigma=1, null=TRUE)
+#' Y <- get_pheno_pair(b=b, X=X, r=0.5)
+#' b_hat <- get_beta_hat(Y=Y, X=X, A=A, n_ind=10000)
+#' b1_hat <- matrix(b_hat[1, ], nrow = 1)
+#' b2_hat <- matrix(b_hat[2, ], nrow = 1)
+#' b_mle <- get_mle_beta(b1_hat=b1_hat, b2_hat=b2_hat, c=0.6, r=0.5, null=TRUE)
 #' @export
 
 get_mle_beta <- function(b1_hat, b2_hat, c, r, null=TRUE){
@@ -163,6 +192,16 @@ get_mle_beta <- function(b1_hat, b2_hat, c, r, null=TRUE){
 #' @param r phenotypic correlation between the two phenotypes
 #'
 #' @return the MLE of slope between two sets of effect sizes
+#' @examples
+#' AC <- get_ac_mat(n_var=100)
+#' A <- get_af_mat(AC=AC, n_ind=10000)
+#' X <- get_geno_mat(AC, n_ind=10000)
+#' b <- get_true_beta(n_var=100, c=0.6, pi=0.5, sigma=1, null=TRUE)
+#' Y <- get_pheno_pair(b=b, X=X, r=0.5)
+#' b_hat <- get_beta_hat(Y=Y, X=X, A=A, n_ind=10000)
+#' b1_hat <- matrix(b_hat[1, ], nrow = 1)
+#' b2_hat <- matrix(b_hat[2, ], nrow = 1)
+#' c_hat <- get_c_hat(b1_hat=b1_hat, b2_hat=b2_hat, A=A, r=0.5)
 #' @export
 
 get_c_hat <- function(b1_hat, b2_hat, A, r){
@@ -188,6 +227,17 @@ get_c_hat <- function(b1_hat, b2_hat, A, r){
 #' @param A Allele frequency information
 #'
 #' @return A single numeric value representing the test statistic of ALLSPICE (maximum likelihood ratio)
+#' @examples
+#' AC <- get_ac_mat(n_var=100)
+#' A <- get_af_mat(AC=AC, n_ind=10000)
+#' X <- get_geno_mat(AC, n_ind=10000)
+#' b <- get_true_beta(n_var=100, c=0.6, pi=0.5, sigma=1, null=TRUE)
+#' Y <- get_pheno_pair(b=b, X=X, r=0.5)
+#' b_hat <- get_beta_hat(Y=Y, X=X, A=A, n_ind=10000)
+#' b1_hat <- matrix(b_hat[1, ], nrow = 1)
+#' b2_hat <- matrix(b_hat[2, ], nrow = 1)
+#' c_hat <- get_c_hat(b1_hat=b1_hat, b2_hat=b2_hat, A=A, r=0.5)
+#' lambda <- get_likelihood_test_stats(n_ind=10000, r=0.5, b1_hat=b1_hat, b2_hat=b2_hat, c=c_hat, A=A)
 #' @export
 
 get_likelihood_test_stats <- function(n_ind, r, b1_hat, b2_hat, c, A){
@@ -205,6 +255,9 @@ get_likelihood_test_stats <- function(n_ind, r, b1_hat, b2_hat, c, A){
 #' @param af_field field name of allele frequency information
 #'
 #' @return a data frame containing effect sizes of variants on two phenotypes and their allele frequency information
+#' @examples
+#' data <- data.frame(x = rnorm(10), y = rnorm(10), z = runif(10, 0,1))
+#' data <- format_ALLSPICE_data(data=data, beta1_field = 'x', beta2_field = 'y', af_field = 'z')
 #' @export
 
 format_ALLSPICE_data <- function(data, beta1_field, beta2_field, af_field){

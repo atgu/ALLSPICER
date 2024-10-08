@@ -4,3 +4,11 @@
 ^CRAN-SUBMISSION$
 ^analysis$
 ^tests$
+^.DS_Store$
+^.Rhistory$
+^.gitignore$
+^.git$
+^.Rproj.user$
+^analysis/.DS_Store$
+^ALLSPICER.Rcheck$
+^LICENSE\.md$
