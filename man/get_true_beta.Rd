@@ -23,3 +23,6 @@ A 2x`n_var` matrix of effect size information for `n_var` variants (first row co
 \description{
 simulation function: simulate true effect size information of `n_var` variants for two phenotypes
 }
+\examples{
+true_beta <- get_true_beta(n_var=100, c=0.6, pi=0.5, sigma=1, null=TRUE)
+}

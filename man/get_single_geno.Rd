@@ -17,3 +17,6 @@ A binary vector representing the genotype information of `n_ind` individuals for
 \description{
 simulation function: simulate genotype information for one locus, where `cnt` samples out of `n_ind` has the mutation
 }
+\examples{
+geno <- get_single_geno(cnt = 100, n_ind = 10000)
+}

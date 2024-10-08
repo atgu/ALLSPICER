@@ -23,3 +23,14 @@ A 2x`n_var` matrix of MLE estimated effect size information (first row correspon
 \description{
 ALLSPICE function: compute the effect size estimates that maximize the likelihood (maximum likelihood estimate - MLE) conditioning on c
 }
+\examples{
+AC <- get_ac_mat(n_var=100)
+A <- get_af_mat(AC=AC, n_ind=10000)
+X <- get_geno_mat(AC, n_ind=10000)
+b <- get_true_beta(n_var=100, c=0.6, pi=0.5, sigma=1, null=TRUE)
+Y <- get_pheno_pair(b=b, X=X, r=0.5)
+b_hat <- get_beta_hat(Y=Y, X=X, A=A, n_ind=10000)
+b1_hat <- matrix(b_hat[1, ], nrow = 1)
+b2_hat <- matrix(b_hat[2, ], nrow = 1)
+b_mle <- get_mle_beta(b1_hat=b1_hat, b2_hat=b2_hat, c=0.6, r=0.5, null=TRUE)
+}

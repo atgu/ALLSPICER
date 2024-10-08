@@ -19,3 +19,9 @@ A 2x`n_ind` matrix of phenotype information (first row corresponds to the first 
 \description{
 simulation function: simulate true phenotype values of a pair of phenotypes
 }
+\examples{
+AC <- get_ac_mat(n_var=100)
+X <- get_geno_mat(AC, n_ind=10000)
+b <- get_true_beta(n_var=100, c=0.6, pi=0.5, sigma=1, null=TRUE)
+Y <- get_pheno_pair(b=b, X=X, r=0.5)
+}

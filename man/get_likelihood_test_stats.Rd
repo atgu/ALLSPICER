@@ -25,3 +25,15 @@ A single numeric value representing the test statistic of ALLSPICE (maximum like
 \description{
 ALLSPICE function: compute the maximum likelihood ratio of the ALLSPICE test statistic
 }
+\examples{
+AC <- get_ac_mat(n_var=100)
+A <- get_af_mat(AC=AC, n_ind=10000)
+X <- get_geno_mat(AC, n_ind=10000)
+b <- get_true_beta(n_var=100, c=0.6, pi=0.5, sigma=1, null=TRUE)
+Y <- get_pheno_pair(b=b, X=X, r=0.5)
+b_hat <- get_beta_hat(Y=Y, X=X, A=A, n_ind=10000)
+b1_hat <- matrix(b_hat[1, ], nrow = 1)
+b2_hat <- matrix(b_hat[2, ], nrow = 1)
+c_hat <- get_c_hat(b1_hat=b1_hat, b2_hat=b2_hat, A=A, r=0.5)
+lambda <- get_likelihood_test_stats(n_ind=10000, r=0.5, b1_hat=b1_hat, b2_hat=b2_hat, c=c_hat, A=A)
+}
