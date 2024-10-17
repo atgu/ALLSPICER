@@ -1,14 +1,13 @@
 Package: ALLSPICER
 Type: Package
-Title: Tool for Heterogeneous Effects of Rare Variants Within Genes Associated with Traits
-Version: 0.1.8
+Title: ALLelic Spectrum of Pleiotropy Informed Correlated Effects
+Version: 0.1.9
 Authors@R: person(given = "Wenhan",
                   family = "Lu",
                   role = c("aut", "cre"),
                   email = "wlu@broadinstitute.org")
 Maintainer: Wenhan Lu <wlu@broadinstitute.org>
-Description: A likelihood statistical test to identify 
-    heterogeneity within a gene associated with multiple traits.
+Description: Provides statistical tools to analyze heterogeneous effects of rare variants within genes that are associated with multiple traits. The package implements methods for assessing pleiotropic effects and identifying allelic heterogeneity, which can be useful in large-scale genetic studies. Methods include likelihood-based statistical tests to assess these effects. For more details, see Lu et al. (2024) <doi:10.1101/2024.10.01.614806>.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Imports: dplyr, magrittr, readr, mvtnorm, stats

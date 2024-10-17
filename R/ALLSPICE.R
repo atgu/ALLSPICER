@@ -29,7 +29,6 @@
 
 ALLSPICE <- function(data, pheno_corr, n_ind, gene='GENENAME', pheno1='PHENO1', pheno2='PHENO2', beta1_field = 'BETA1', beta2_field = 'BETA2', af_field = 'AF'){
   fields <- colnames(data)
-  print(fields)
   if(!(beta1_field %in% fields) | !(beta2_field %in% fields) | !(af_field %in% fields)) {
     stop("Effect sizes of variants on the two phenotypes or Allele frequency is missing from the data, please check")
   }
