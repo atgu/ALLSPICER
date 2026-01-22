@@ -1,9 +1,12 @@
-source('~/Dropbox (Partners HealthCare)/github_repo/ukbb_exomes_pleiotropy/R/constants.R')
+source('~/Dropbox (Partners HealthCare)/github_repo/ALLSPICER/analysis/R/constants.R')
 
 gene_data <- read.csv(paste0(data_path, 'gene_phewas_burden_sig_count_239.csv'), sep = '\t') %>%
-  filter(annotation != 'pLoF|missense|LC') %>%
-  mutate(annotation = factor(annotation, levels = annotation_types),
-         interval = get_freq_interval(CAF)) 
+  # filter(annotation != 'pLoF|missense|LC') %>%
+  mutate(annotation = factor(annotation, levels = annotation_types2[c(1,2,4,3)]),
+         interval = get_freq_interval(CAF))
+label_type = labeller(annotation = annotation_names2)
+annotation_fill_scale2 = scale_fill_manual(name = 'Annotation', values = colors2, breaks = annotation_types2[c(1,2,4,3)], labels = annotation_names2[c(1,2,4,3)])
+annotation_color_scale2 = scale_color_manual(name = 'Annotation', values = colors2, breaks = annotation_types2[c(1,2,4,3)], labels = annotation_names2[c(1,2,4,3)])
 
 gene_prop_summary <- gene_data %>%
   group_by(interval, annotation) %>%
@@ -25,12 +28,12 @@ figure <- gene_summary  %>%
   mutate(interval = factor(interval, levels = c('(0.0001, 0.001]', '(0.001, 0.01]', '(0.01, 0.1]', '(0.1, 1]'),
                            labels = c('(0.01%, 0.1%]', '(0.1%, 1%]', '(1%, 10%]', paste0('(10%, ', bquote("\U221E"), ' )') ))) %>%
   ggplot +
-  labs(x = 'CAF interval', y = 'Gene (%)', lty = NULL) + 
-  geom_point(aes(x = interval, y = value.x, color = annotation, group=interaction(annotation))) + 
+  labs(x = 'CAF interval', y = 'Gene (%)', lty = NULL) +
+  geom_point(aes(x = interval, y = value.x, color = annotation, group=interaction(annotation))) +
   geom_line(aes(x = interval, y = value.x, color = annotation, group=interaction(annotation))) +
-  geom_col(aes(x = interval, y = value.y/max_n, color=annotation, fill=annotation), alpha=0.2) + 
-  annotation_color_scale + 
-  annotation_fill_scale + 
+  geom_col(aes(x = interval, y = value.y/max_n, color=annotation, fill=annotation), alpha=0.2) +
+  annotation_color_scale2 +
+  annotation_fill_scale2 +
   scale_y_continuous(label=percent, sec.axis = sec_axis(~.*max_n, name="N genes")) +
   theme(legend.position = 'top', legend.direction = 'horizontal') +
   facet_grid(name~annotation, scale = 'free', labeller = label_type)+

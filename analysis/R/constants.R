@@ -2,11 +2,11 @@ source('~/ukb_exomes/R/constants.R')
 
 # if (!require("BiocManager", quietly = TRUE))
 #   install.packages("BiocManager")
-# 
+#
 # BiocManager::install("STRINGdb")
 # Requirements
 # packages = c('gplots', 'hash', 'sqldf', 'plotrix', 'tidygraph', "DBI", "STRINGdb", "magrittr")
-# 
+#
 # for(p in packages){
 #   if(!require(p, character.only = T)){
 #     install.packages(p)
@@ -33,9 +33,9 @@ figure_path <- paste0(root, 'figure_2024/')
 result_path <- paste0(root, 'results/')
 r_path <- paste0(root, 'R/')
 
-pheno_group_color <- c("Biomarkers"="#1F77B4FF", 
-                       "Brain imaging"="#FF7F0EFF", 
-                       "Diet & Lifestyle" = "#EEA9B8FF", 
+pheno_group_color <- c("Biomarkers"="#1F77B4FF",
+                       "Brain imaging"="#FF7F0EFF",
+                       "Diet & Lifestyle" = "#EEA9B8FF",
                        "Diseases"="#D62728FF",
                        "Mental & Cognitive traits"="#9467BDFF",
                        "Physical measures"="#8C564BFF")
@@ -47,11 +47,11 @@ colors2 = c(colors, 'pLoF|missense|LC' = '#FFA600')
 annotation_fill_scale2 = scale_fill_manual(name = 'Annotation', values = colors2, breaks = annotation_types2, labels = annotation_names2)
 annotation_color_scale2 = scale_color_manual(name = 'Annotation', values = colors2, breaks = annotation_types2, labels = annotation_names2)
 gene_list_names = sort(c('ACMG_2_0' = 'ACMG V2.0', 'all_ad' = 'Autosomal dominant', 'all_ar' = 'Autosomal recessive', 'berg_ad' = 'Autosomal dominant-Berg (OMIM)', 'berg_ar' = 'Autosomal recessive-Berg (OMIM)', 'berg_xd' = 'X-linked dominant genes-Berg (OMIM)', 'berg_xr' = 'X-linked recessive genes-Berg (OMIM)',
-                         'blekhman_ad' = 'Autosomal dominant-Blekhman (OMIM)', 'blekhman_ar' = 'Autosomal recessive-Blekhman (OMIM)', 'blekhman_x' = 'X-linked genes-Blekhman (OMIM)', 'BROCA_Cancer_Risk_Panel' = 'BROCA-Cancer\nrisk panel', 'clingen_level3_genes_2015_02_27' = 'ClinGen haploinsufficient V1', 
-                         'clingen_level3_genes_2018_09_13' = 'ClinGen haploinsufficient', 'clinvar_path_likelypath' = 'Clinvar (likely) pathogenic', 'constrained' = 'Constrained', 'core_essentials_hart' = 'Essential in culture', 'developmental delay' = 'Developmental Delay',  
-                         'DRG_KangJ' = 'DNA repair genes-KangJ', 'DRG_WoodRD' = 'DNA repair genes-WoodRD', 'drug_targets_nelson' = 'Drug targets', 'fda_approved_drug_targets' = 'FDA approved drug targets', 'fmrp_list_gencode' = 'FMRP interactors', 'gpcr_guide' = 'GPCRs from guidetopharmacology', 'gpcr_union' = 'GPCRs all', 
+                         'blekhman_ad' = 'Autosomal dominant-Blekhman (OMIM)', 'blekhman_ar' = 'Autosomal recessive-Blekhman (OMIM)', 'blekhman_x' = 'X-linked genes-Blekhman (OMIM)', 'BROCA_Cancer_Risk_Panel' = 'BROCA-Cancer\nrisk panel', 'clingen_level3_genes_2015_02_27' = 'ClinGen haploinsufficient V1',
+                         'clingen_level3_genes_2018_09_13' = 'ClinGen haploinsufficient', 'clinvar_path_likelypath' = 'Clinvar (likely) pathogenic', 'constrained' = 'Constrained', 'core_essentials_hart' = 'Essential in culture', 'developmental delay' = 'Developmental Delay',
+                         'DRG_KangJ' = 'DNA repair genes-KangJ', 'DRG_WoodRD' = 'DNA repair genes-WoodRD', 'drug_targets_nelson' = 'Drug targets', 'fda_approved_drug_targets' = 'FDA approved drug targets', 'fmrp_list_gencode' = 'FMRP interactors', 'gpcr_guide' = 'GPCRs from guidetopharmacology', 'gpcr_union' = 'GPCRs all',
                          'gpcr_uniprot' = 'GPCRs from uniprot', 'gpi_anchored' = 'GPI-anchored proteins', 'gwascatalog' = 'GWAS catalog', 'CEGv2_subset_universe' = 'Cell essential', 'NEGv1_subset_universe' = 'Cell non-essential', 'haploinsufficiency_mild_curated_2016' = 'Haploinsufficient mild',
-                         'haploinsufficiency_moderate_curated_2016' = 'Haploinsufficient moderate', 'haploinsufficiency_severe_curated_2016' = 'Haploinsufficient severe', 'haploinsufficient' = 'Haploinsufficient', 'homozygous_lof_tolerant_twohit' = 'Homozygous lof tolerant', 'kinases' = 'Kinases', 'mgi_essential' = 'MGI essential', 
+                         'haploinsufficiency_moderate_curated_2016' = 'Haploinsufficient moderate', 'haploinsufficiency_severe_curated_2016' = 'Haploinsufficient severe', 'haploinsufficient' = 'Haploinsufficient', 'homozygous_lof_tolerant_twohit' = 'Homozygous lof tolerant', 'kinases' = 'Kinases', 'mgi_essential' = 'MGI essential',
                          'natural_product_targets' = 'Natural product targets', 'olfactory_receptors' = 'Olfactory receptors', 'x-linked_clinvar' = 'X-linked genes-ClinVar'), decreasing = T)
 
 
@@ -83,7 +83,7 @@ read_pleiotropy_results <- function(test, tranche){
 
 modify_results_table <- function(results, test, tranche){
   gene_data <- read_pleiotropy_subset(test, tranche, 'gene')
-  if(tranche == '500k'){ 
+  if(tranche == '500k'){
     gene_data <- gene_data %>%
       mutate(n_cases = n_cases_defined) %>%
       mutate(coding = if_else(is.na(coding), '', coding)) %>%
@@ -93,9 +93,9 @@ modify_results_table <- function(results, test, tranche){
   }
   results <- results %>%
     # select(-sig_gene.x, -sig_gene.y, -sig_gene) %>%
-    merge(., gene_data, by.x = c('annotation', 'pheno1', 'gene'), 
+    merge(., gene_data, by.x = c('annotation', 'pheno1', 'gene'),
           by.y = c('annotation', 'phenoname', 'gene_symbol'), all.x = T) %>%
-    merge(., gene_data, by.x = c('annotation', 'pheno2', 'gene'), 
+    merge(., gene_data, by.x = c('annotation', 'pheno2', 'gene'),
           by.y = c('annotation', 'phenoname', 'gene_symbol'), all.x = T) %>%
     mutate(sig_gene.x = if_else(Pvalue.x <  2.5e-6, 1, 0),
            sig_gene.y = if_else(Pvalue.y <  2.5e-6, 1, 0),) %>%
@@ -128,7 +128,7 @@ produce_stats <- function(net, measures = NA, quickrun = T, runsilent = F){
     }
   }
   name <- gsub("\\(.*\\)",'', measures)
-  
+
   for(i in 1:length(measures)){
     if(!runsilent){
       cat('Working on ', name[i] ,'...\n')
@@ -171,15 +171,15 @@ pleiotropic_cnt_bin_figure <- function(data_type='gene', test, save_plot=T){
            interval = factor(interval, levels = rev(c('(0.0001, 0.001]', '(0.001, 0.01]', '(0.01, 0.1]', '(0.1, 1]')),
                              labels = rev(c('(0.01%, 0.1%]', '(0.1%, 1%]', '(1%, 10%]', paste0('(10%, ', bquote("\U221E"), ' )')))),
            cnt_interval = factor(cnt_interval, levels = c('[2, 5]', '(5, 10]', '(10, 15]', '(15, 20]', '(20, 25]', '(25, 30]', '(30, 40]', '(40, 60]', paste0('(60, ', bquote("\U221E"), ' )')),
-                                 labels = c('[2, 5]', '(5, 10]', '(10, 15]', '(15, 20]', '(20, 25]', '(25, 30]', '(30, 40]', '(40, 60]', paste0('(60, ', bquote("\U221E"), ' )')))) 
+                                 labels = c('[2, 5]', '(5, 10]', '(10, 15]', '(15, 20]', '(20, 25]', '(25, 30]', '(30, 40]', '(40, 60]', paste0('(60, ', bquote("\U221E"), ' )'))))
   label_data <- sum_data %>%
     group_by(annotation, interval) %>%
     summarise(n_sig = sum(cnt))
-  
+
   sum_data <- sum_data %>%
     merge(., label_data, by = c("annotation", 'interval')) %>%
     mutate(prop_sig = cnt/n_sig)
-  
+
   cnts <- c('[2, 5]', '(5, 10]', '(10, 15]', '(15, 20]', '(20, 25]', '(25, 30]', '(30, 40]', '(40, 60]', '(60, ∞ )')
   cnt_colors <- inlmisc::GetColors(length(cnts), scheme = "smooth rainbow")
   names(cnt_colors) <- cnts
@@ -196,15 +196,15 @@ pleiotropic_cnt_bin_figure <- function(data_type='gene', test, save_plot=T){
                  fill = reorder(factor(cnt_interval), desc(cnt_interval)),
                  label = if_else(prop_sig < 0.004, '', as.character(cnt))) +
     geom_bar(position='stack', stat='identity')+
-    labs(y = paste('Number/Proportion of pleiotropy', if_else(data_type=='gene', 'genes', 'variants'), test_name), x = NULL, 
+    labs(y = paste('Number/Proportion of pleiotropy', if_else(data_type=='gene', 'genes', 'variants'), test_name), x = NULL,
          color = paste('Number of Associations'), fill = paste('Number of Associations'))  +
-    scale_color_manual(values = cnt_colors) + 
-    scale_fill_manual(values = cnt_colors) + 
-    scale_y_continuous(limits = c(if_else(data_type=='gene', if_else(test == 'burden', -0.35, -0.52), -0.4), 2.001), 
-                       expand = c(0, 0), 
-                       breaks = c(-0.4, -0.3, -0.2, -0.1, 0, 0.5, 1, 1.5, 2), 
+    scale_color_manual(values = cnt_colors) +
+    scale_fill_manual(values = cnt_colors) +
+    scale_y_continuous(limits = c(if_else(data_type=='gene', if_else(test == 'burden', -0.35, -0.52), -0.4), 2.001),
+                       expand = c(0, 0),
+                       breaks = c(-0.4, -0.3, -0.2, -0.1, 0, 0.5, 1, 1.5, 2),
                        labels =y_labels) +
-    facet_grid(annotation~., switch = "y", scales='free_x', labeller = label_type) + 
+    facet_grid(annotation~., switch = "y", scales='free_x', labeller = label_type) +
     coord_flip()+    theme(panel.spacing = unit(0, "lines"),
                            panel.grid = element_blank(),
                            panel.border = element_blank(),
@@ -218,16 +218,16 @@ pleiotropic_cnt_bin_figure <- function(data_type='gene', test, save_plot=T){
                            axis.text.x = element_text(vjust = 1, hjust = 0.95),
                            axis.text.y = element_blank(),
                            axis.title = element_text(size = 25, face = 'bold'),
-                           axis.ticks.y = element_blank(), 
+                           axis.ticks.y = element_blank(),
                            axis.line.y= element_blank(),
                            legend.position="top", legend.box="horizontal", legend.margin=margin()
     ) +
-    geom_text(size = 7, position = position_stack(vjust = 0.5), color = 'white') + 
+    geom_text(size = 7, position = position_stack(vjust = 0.5), color = 'white') +
     geom_text(aes(y = -0.25, label=paste0(n_sig, ' /', n), color=NULL), size = 8) +
     geom_label(data = label_data, aes(y = 0, label=interval, fill = NULL,color = NULL), size = 8, fontface='bold', alpha = 0) +
     geom_bar(data = label_data, aes(x = interval, y = -n_sig/if_else(data_type=='gene', 500,10000), label=NULL, fill=NULL, color=NULL), stat='identity', alpha = .5) +
     guides(fill=guide_legend(nrow=1,byrow=TRUE),
-           color=guide_legend(nrow=1,byrow=TRUE)) 
+           color=guide_legend(nrow=1,byrow=TRUE))
   if(save_plot){
     png(paste0(figure_path, data_type, '_cnt_all_pheno_', test,'_filtered_by_interval_bar_binned.png'), height =12, width = 20, units = 'in', res = 300)
     print(figure)
@@ -256,32 +256,32 @@ pleiotropic_gene_cnt_figure <- function(data_type, test, save_plot=T){
     filter(all_sig_pheno_cnt>1)
   label_data <- sum_data %>%
     group_by(annotation, interval) %>%
-    summarise(n_sig = sum(cnt)) 
-  
+    summarise(n_sig = sum(cnt))
+
   sum_data <- sum_data %>%
     merge(., label_data, by = c("annotation", 'interval')) %>%
     mutate(prop_sig = cnt/n_sig)
-  
+
   cnts <- sort(unique(sum_data$all_sig_pheno_cnt))
   cnt_colors <- inlmisc::GetColors(if_else(data_type == 'gene', 33, 87), scheme = "smooth rainbow")
   names(cnt_colors) <- as.character(2:(if_else(data_type == 'gene', 33, 87)+1))
   cnt_colors <- cnt_colors[as.character(cnts)]
   test_name <- if_else(test=='skato', 'SKAT-O', 'Burden test')
   figure <- sum_data %>%
-    ggplot + 
+    ggplot +
     aes(x = interval,
         y = cnt/n_sig,
         color = reorder(factor(all_sig_pheno_cnt), -all_sig_pheno_cnt),
         fill = reorder(factor(all_sig_pheno_cnt), -all_sig_pheno_cnt),
         label = if_else(cnt == 1, '', as.character(cnt))) +
     geom_bar(position='stack', stat='identity') +
-    # geom_hline(yintercept = c(0)) + 
-    labs(y = paste('Number/Proportion of pleiotropy genes (', test_name,')'), x = NULL, 
+    # geom_hline(yintercept = c(0)) +
+    labs(y = paste('Number/Proportion of pleiotropy genes (', test_name,')'), x = NULL,
          color = paste('Number of Associations'), fill = paste('Number of Associations'))  +
-    scale_color_manual(values = cnt_colors) + 
-    scale_fill_manual(values = cnt_colors) + 
+    scale_color_manual(values = cnt_colors) +
+    scale_fill_manual(values = cnt_colors) +
     scale_y_continuous(limits = c(if_else(test == 'burden', -0.35, -0.52), 1.001), expand = c(0, 0), breaks = c(-0.5, -0.4, -0.3, -0.2, -0.1, 0, 0.25, 0.5, 0.75, 1), labels = c(250, 200, 150, 100, 50, 0, 0.25, 0.5, 0.75, 1)) +
-    facet_grid(annotation~., switch = "y", scales='free_x', labeller = label_type) + 
+    facet_grid(annotation~., switch = "y", scales='free_x', labeller = label_type) +
     # theme_classic() +
     coord_flip()+
     theme(panel.spacing = unit(0, "lines"),
@@ -297,16 +297,16 @@ pleiotropic_gene_cnt_figure <- function(data_type, test, save_plot=T){
           axis.text.x = element_text(vjust = 1, hjust = 0.95),
           axis.text.y = element_blank(),
           axis.title = element_text(size = 25, face = 'bold'),
-          axis.ticks.y = element_blank(), 
+          axis.ticks.y = element_blank(),
           axis.line.y= element_blank(),
           legend.position="right", legend.box="horizontal", legend.margin=margin()
     ) +
-    geom_text(size = 8, position = position_stack(vjust = 0.5), color = 'white') + 
+    geom_text(size = 8, position = position_stack(vjust = 0.5), color = 'white') +
     geom_text(aes(y = if_else(test =='burden', -0.25, -0.45), label=paste0(n_sig, ' /', n)), size = 8, fontface='bold') +
     geom_label(data = label_data, aes(y = 0, label=interval, color = NULL), size = 8, fontface='bold', fill = 'white', alpha = 0) +
     geom_bar(data = label_data, aes(x = interval, y = -n_sig/500, label=NULL, fill=NULL, color=NULL), stat='identity', alpha = .5) +
     guides(fill=guide_legend(nrow=5,byrow=TRUE),
-           color=guide_legend(nrow=5,byrow=TRUE)) 
+           color=guide_legend(nrow=5,byrow=TRUE))
   if(save_plot){
     png(paste0(figure_path, data_type, '_cnt_all_pheno_', test,'_filtered_by_interval_bar_normalized.png'), height =12, width = 22, units = 'in', res = 300)
     print(figure)
@@ -321,20 +321,20 @@ get_gene_list_sumstats <- function(gene_list, pleiotropic_genes, list_name){
     mutate(n_total = n()) %>%
     merge(., pleiotropic_genes, by = 'gene_symbol', all.x = T)  %>%
     add_count(annotation)
-  sum_table = gene_data %>% 
+  sum_table = gene_data %>%
     filter(!is.na(annotation)) %>%
     group_by(annotation, n_total, n) %>%
     summarise(n_pleiotropy = sum(sig_cnt > 1),
               # sum_prop_con_sig = sum(prop_con_sig * (sig_cnt > 1), na.rm = T),
               # sum_prop_icd_sig = sum(prop_icd_sig * (sig_cnt > 1), na.rm = T),
               # sum_prop_cat_sig = sum(prop_cat_sig * (sig_cnt > 1), na.rm = T),
-    ) %>% 
+    ) %>%
     mutate(prop_pleiotropy = n_pleiotropy/n,
-           # mean_prop_con_sig = sum_prop_con_sig/n_pleiotropy, 
-           # mean_prop_icd_sig = sum_prop_icd_sig/n_pleiotropy, 
-           # mean_prop_cat_sig = sum_prop_cat_sig/n_pleiotropy, 
+           # mean_prop_con_sig = sum_prop_con_sig/n_pleiotropy,
+           # mean_prop_icd_sig = sum_prop_icd_sig/n_pleiotropy,
+           # mean_prop_cat_sig = sum_prop_cat_sig/n_pleiotropy,
            gene_list = list_name,
-           sd = sqrt(prop_pleiotropy*(1-prop_pleiotropy)/n)) 
+           sd = sqrt(prop_pleiotropy*(1-prop_pleiotropy)/n))
   # %>%
   #   mutate(mean_prop_con_sig = if_else(is.nan(mean_prop_con_sig), NA, mean_prop_con_sig),
   #          mean_prop_icd_sig = if_else(is.nan(mean_prop_icd_sig), NA, mean_prop_icd_sig),
@@ -344,22 +344,22 @@ get_gene_list_sumstats <- function(gene_list, pleiotropic_genes, list_name){
 
 gene_list_pleiotropy_figure <- function(data, test, panel=T, filter_cat=T, overwrite=T){
   if(overwrite){
-    gene_info <- read_delim('~/gene_lists/lists/data/gnomad.v2.1.1.lof_metrics.by_gene.txt.bgz', delim = '\t')
-    gene_dd <- read_delim('~/gene_lists/lists/data/forKonrad_sig31kDNM_consensus_genes_2021_01_12.txt', delim = '\t') %>% dplyr::select(gene_symbol = symbol) 
-    category_subset <- c('ACMG_2_0', 'all_ad', 'all_ar', 'BROCA_Cancer_Risk_Panel', 'CEGv2_subset_universe', 
+    gene_info <- read_delim('~/Dropbox (Partners HealthCare)/github_repo/ukb_exomes/data/gnomad.v2.1.1.lof_metrics.by_gene.txt.bgz', delim = '\t')
+    gene_dd <- read_delim('~/Dropbox (Partners HealthCare)/github_repo/ukb_exomes/data/forKonrad_sig31kDNM_consensus_genes_2021_01_12.txt', delim = '\t') %>% dplyr::select(gene_symbol = symbol)
+    category_subset <- c('ACMG_2_0', 'all_ad', 'all_ar', 'BROCA_Cancer_Risk_Panel', 'CEGv2_subset_universe',
                          'clingen_level3_genes_2018_09_13', 'constrained', 'core_essentials_hart', 'drug_targets_nelson', 'gwascatalog', 'haploinsufficient',
                          'homozygous_lof_tolerant_twohit', 'NEGv1_subset_universe', 'olfactory_receptors', 'universe')
-    
+
     pleiotropic_genes <- data %>%
-      distinct(gene_id, 
-               gene_symbol, 
-               annotation, 
+      distinct(gene_id,
+               gene_symbol,
+               annotation,
                interval,
-               sig_cnt = n_phewas_sig) 
+               sig_cnt = n_phewas_sig)
     constrained = gene_info[, c('gene_id', 'gene', 'oe_lof_upper_bin')] %>%
       mutate(gene_symbol = gene) %>%
       filter(oe_lof_upper_bin == 0) %>% distinct(gene_symbol)
-    
+
     files <- list.files('~/gene_lists/lists/')
     files <- files[grepl(".tsv$",files)]
     strs <- unlist(strsplit(files,".tsv"))
@@ -378,7 +378,7 @@ gene_list_pleiotropy_figure <- function(data, test, panel=T, filter_cat=T, overw
   }else{
     results <- read_csv(paste0(result_path, 'gene_list_pleiotropy_', test, '.csv'))
   }
-  
+
   if(filter_cat){
     results <- results %>%
       filter(gene_list %in% category_subset)
@@ -394,25 +394,25 @@ gene_list_pleiotropy_figure <- function(data, test, panel=T, filter_cat=T, overw
            annotation  = factor(annotation, levels = annotation_types2)) %>%
     ggplot +
     aes(
-      # x = reorder(gene_list, desc(gene_list)), 
+      # x = reorder(gene_list, desc(gene_list)),
       x = gene_list,
       y = prop_pleiotropy, ymin =  prop_pleiotropy-sd, ymax =  prop_pleiotropy+sd, color = annotation, fill=annotation, alpha = n > 5) +
-    geom_pointrange(stat = "identity", 
-                    position = position_dodge(width = 0.5), 
+    geom_pointrange(stat = "identity",
+                    position = position_dodge(width = 0.5),
                     size=0.6) +
     geom_hline(data = results[results$gene_list == 'universe', ], aes(yintercept = prop_pleiotropy, color = annotation), lty = 2) +
-    labs(x = NULL, y = paste0('Proportion of pleiotropic genes\n(>1 / >=1)')) + 
-    scale_x_discrete(labels = gene_list_names) + 
+    labs(x = NULL, y = paste0('Proportion of pleiotropic genes\n(>1 / >=1)')) +
+    scale_x_discrete(labels = gene_list_names) +
     scale_y_continuous(labels = scales::percent_format(accuracy=1)) +
-    scale_alpha_discrete(name = 'N > 5', range = c(0.5, 1)) + 
-    annotation_color_scale2 + annotation_fill_scale2 + 
+    scale_alpha_discrete(name = 'N > 5', range = c(0.5, 1)) +
+    annotation_color_scale2 + annotation_fill_scale2 +
     guides(shape = 'none') +
     theme_classic() + themes +
     theme(axis.text.x = element_text(size = 8, angle = 40, hjust = 1),
           legend.position =c(0.55, 0.85), legend.direction = 'horizontal')
   if(panel){
-    figure <- figure + 
-      coord_flip() + 
+    figure <- figure +
+      coord_flip() +
       facet_grid(~annotation, scales = 'fixed',labeller = labeller(annotation = annotation_names2)) +
       theme(axis.text.x = element_text(size = 8, angle = 0, vjust = 0.8),
             legend.position = 'none')
@@ -433,10 +433,10 @@ format_upset_data <- function(data, group){
   if(group %in% c('icd', 'both')){
     data <- data %>%
       mutate(pheno_group = str_to_sentence(pheno_group)) %>%
-      mutate(pheno_group_sig = if_else(pheno_group_sig, 1, 0), 
+      mutate(pheno_group_sig = if_else(pheno_group_sig, 1, 0),
              group_name = if_else(pheno_group %in% names(icd_names), icd_names[pheno_group], pheno_group)) %>%
       as.data.frame() %>%
-      pivot_wider(id_cols = colnames(.)[1:(ncol(.)-4)], names_from = 'group_name', values_from = 'pheno_group_sig', values_fn = function(x) sum(x)) 
+      pivot_wider(id_cols = colnames(.)[1:(ncol(.)-4)], names_from = 'group_name', values_from = 'pheno_group_sig', values_fn = function(x) sum(x))
     if(group == 'both'){
       data <- data %>%
         mutate(sum_disease = rowSums(data[,6:(ncol(data)-7)]),
@@ -444,7 +444,7 @@ format_upset_data <- function(data, group){
         filter(sum_disease != 0 & sum_biomarker!=0 )
     }
 
-    
+
   }else{
     data <- data %>%
       filter(!is.na(pheno_group)) %>%
@@ -452,11 +452,11 @@ format_upset_data <- function(data, group){
       mutate(pheno_group_sig = if_else(pheno_group_sig, 1, 0)
              ) %>%
       pivot_wider(id_cols = colnames(.)[1:(ncol(.)-3)], names_from = 'pheno_group', values_from = 'pheno_group_sig') %>%
-      as.data.frame(.) 
+      as.data.frame(.)
   }
   data <- data %>%
     mutate(group_cnt = rowSums(data[,-c(1:5)])) %>%
-    filter(group_cnt > 1) 
+    filter(group_cnt > 1)
   print(data[,c('gene_symbol', 'annotation', 'group_cnt')])
   return(data)
 }
@@ -465,8 +465,8 @@ group_upset_plot <- function(data, group_type, test_type,groups, query.list, max
   test_name = if_else(test_type == 'skato', 'SKAT-O', 'Burden test')
   if(group_type == 'icd'){
     p <- format_upset_data(data, group =group_type) %>%
-      ComplexUpset::upset(., 
-                          intersect = groups, name = NULL, 
+      ComplexUpset::upset(.,
+                          intersect = groups, name = NULL,
                           mode = 'exclusive_intersection',
                           # set_sizes = (upset_set_size() +
                           #                geom_text(aes(label=..count..), hjust=-0.8, stat='count', size = 3) +
@@ -481,41 +481,41 @@ group_upset_plot <- function(data, group_type, test_type,groups, query.list, max
                                 size=1
                               ),
                               segment=geom_segment(
-                                linetype=3,lwd = 0.2 
+                                linetype=3,lwd = 0.2
                               )) + theme(axis.text = element_blank())),
                           base_annotations=list(
                             ' '=intersection_size(
                               counts=FALSE,
                               mapping=aes(fill=annotation)
-                            ) + annotation_fill_scale2+ 
+                            ) + annotation_fill_scale2+
                               scale_y_continuous(limits = c(0, max_size), expand = c(0, 0))+
                               theme_classic() + theme(axis.ticks.x = element_blank(),
                                                       axis.title.x = element_blank(),
                                                       axis.text.x = element_blank(),
-                                                  
+
                                                       legend.text = element_text(size=8),
                                                       legend.title = element_blank())
                           ),
-                          width_ratio = 0.2, 
-                          max_size = max_size, 
+                          width_ratio = 0.2,
+                          max_size = max_size,
                           wrap = TRUE,
                           group_by = 'sets',
                           themes = upset_modify_themes(list(
-                            'intersections_matrix'=theme(text=element_blank()), 
+                            'intersections_matrix'=theme(text=element_text(size = 6)),
                             'overall_sizes'=theme(axis.text.x=element_text(size=12, angle = 45))
-                          )), 
+                          )),
                           queries=query.list
       )
   }
   if(group_type %in% c('biomarker', 'blood')){
     p <- format_upset_data(data, group =group_type) %>%
-      ComplexUpset::upset(., 
-                          intersect = groups, name = test_name,  
+      ComplexUpset::upset(.,
+                          intersect = groups, name = test_name,
                           mode = 'exclusive_intersection',
                           set_sizes = (upset_set_size() +
                                          geom_text(aes(label=..count..), hjust=-0.8, stat='count', size = 3) +
                                          theme(axis.text=element_text(size=8))+
-                                         scale_y_continuous(trans=reverse_log_trans()) 
+                                         scale_y_continuous(trans=reverse_log_trans())
                           ),
                           guides='over',
                           matrix=(
@@ -525,32 +525,32 @@ group_upset_plot <- function(data, group_type, test_type,groups, query.list, max
                                 size=1.5
                               ),
                               segment=geom_segment(
-                                linetype=3,lwd = 0.2 
+                                linetype=3,lwd = 0.2
                               ))),
                           base_annotations=list(
                             ' '=intersection_size(
                               counts=FALSE,
                               mapping=aes(fill=annotation)
-                            ) + annotation_fill_scale2+ 
+                            ) + annotation_fill_scale2+
                               scale_y_continuous(limits = c(0, max_size), expand = c(0, 0))+
                               theme_classic() + theme(axis.ticks.x = element_blank(),
                                                       axis.title.x = element_blank(),
                                                       axis.text.x = element_blank())
                           ),
-                          width_ratio = 0.2, 
-                          max_size = max_size, 
+                          width_ratio = 0.2,
+                          max_size = max_size,
                           wrap = TRUE,
                           group_by = 'sets',
                           themes = upset_modify_themes(list(
-                            'intersections_matrix'=theme(text=element_text(size=15)), 
+                            'intersections_matrix'=theme(text=element_text(size=15)),
                             'overall_sizes'=theme(axis.text.x=element_text(size=10))
-                          )), 
+                          )),
                           queries=query.list
       )
   }else if(group_type == 'pheno'){
     p <- format_upset_data(data, group =group_type) %>%
-      ComplexUpset::upset(., 
-                          intersect = groups, name = NULL, 
+      ComplexUpset::upset(.,
+                          intersect = groups, name = NULL,
                           mode = 'exclusive_intersection',
                           set_sizes = FALSE,
                           guides='over',
@@ -561,13 +561,13 @@ group_upset_plot <- function(data, group_type, test_type,groups, query.list, max
                                 size=1.5
                               ),
                               segment=geom_segment(
-                                linetype=3,lwd = 0.2 
+                                linetype=3,lwd = 0.2
                               ))),
                           base_annotations=list(
                             ' '=intersection_size(
                               counts=FALSE,
                               mapping=aes(fill=annotation)
-                            ) + annotation_fill_scale2+ 
+                            ) + annotation_fill_scale2+
                               scale_y_continuous(limits = c(0, max_size), expand = c(0, 0))+
                               theme_classic() + theme(axis.ticks.x = element_blank(),
                                                       axis.title.x = element_blank(),
@@ -588,8 +588,8 @@ group_upset_plot <- function(data, group_type, test_type,groups, query.list, max
       )
   }else if(group_type == 'both'){
     p <- format_upset_data(data, group =group_type) %>%
-      ComplexUpset::upset(., 
-                          intersect = groups, name = test_name, sort_sets=FALSE, 
+      ComplexUpset::upset(.,
+                          intersect = groups, name = test_name, sort_sets=FALSE,
                           mode = 'exclusive_intersection',
                           set_sizes = FALSE,
                           guides='over',
@@ -609,12 +609,12 @@ group_upset_plot <- function(data, group_type, test_type,groups, query.list, max
                               'Disease'='#b594b6'
                             ),
                             data=group_metadata
-                          ), 
+                          ),
                           base_annotations=list(
                             ' '=intersection_size(
                               counts=FALSE,
                               mapping=aes(fill=annotation)
-                            ) + annotation_fill_scale2 + 
+                            ) + annotation_fill_scale2 +
                               scale_y_continuous(limits = c(0, max_size), expand = c(0, 0))+
                               theme_classic() + theme(axis.ticks.x = element_blank(),
                                                                                  axis.title.x = element_blank(),
@@ -630,21 +630,22 @@ group_upset_plot <- function(data, group_type, test_type,groups, query.list, max
                           )),
                           queries=query.list
       )
-    
+
   }
   return(p)
 }
 
 complex_pheno_upset <- function(group_type, test_type, max_size =100, save = T, height = 10, width = 20){
   data <- read_delim(paste0(data_path, group_type, '_domain_level_gene_sig_', test_type, '_', tranche,'.txt.bgz'), delim='\t', col_types = cols(phenocode = col_character())) %>%
-    filter(!is.na(pheno_group)) %>%
-    filter(annotation != 'pLoF|missense|LC') %>%
-    group_by(gene_id, gene_symbol, annotation) %>%
-    mutate(n_sig_group = sum(pheno_group_sig)) %>%
-    filter(n_sig_group > 1) %>%
+    dplyr::filter(!is.na(pheno_group)) %>%
+    # filter(annotation != 'pLoF|missense|LC') %>%
+    dplyr::group_by(gene_id, gene_symbol, annotation) %>%
+    dplyr::mutate(n_sig_group = sum(pheno_group_sig)) %>%
+    dplyr::filter(n_sig_group > 1) %>%
     dplyr::select(-n_sig_group)
-  # pheno_group_cnt_sum <- data %>% 
-  #   group_by(gene_symbol, annotation) %>% 
+  print(table(data %>% select(gene_id, gene_symbol, annotation) %>% distinct() %$% annotation))
+  # pheno_group_cnt_sum <- data %>%
+  #   group_by(gene_symbol, annotation) %>%
   #   summarize(group_cnt = sum(pheno_group_sig)) %>%
   #   filter(group_cnt > 1) %>%
   #   select(-group_cnt)
@@ -657,7 +658,7 @@ complex_pheno_upset <- function(group_type, test_type, max_size =100, save = T, 
     groups <- c("Bone and joint", "Cardiovascular", "Diabetes", "Hormone", "Liver", "Renal", "Blood")
     col.pal <- brewer.pal(n = 12, name = 'Set3')[c(1:6,8)]
   }else if(group_type == 'pheno'){
-    keep <- as.data.frame(data %>% group_by(pheno_group) %>% summarise(sum(pheno_group_sig_cnt)))[,2] != 0
+    keep <- as.data.frame(data %>% dplyr::group_by(pheno_group) %>% dplyr::summarize(sum(pheno_group_sig_cnt)))[,2] != 0
     groups <- unique(data$pheno_group)[keep]
     groups <- str_to_sentence(tolower(groups))[groups != 'Diet']
     groups <- sort(groups)
@@ -667,7 +668,7 @@ complex_pheno_upset <- function(group_type, test_type, max_size =100, save = T, 
     groups <- c("Red blood cells", "White blood cells", "Platelet", "Reticulocyte")
     col.pal <- brewer.pal(n = 12, name = 'Set3')[c(10, 9, 11, 12)]
   }else if(group_type == 'icd'){
-    keep <- as.data.frame(data %>% group_by(pheno_group) %>% summarise(sum(pheno_group_sig_cnt)))[,2] != 0
+    keep <- as.data.frame(data %>% dplyr::group_by(pheno_group) %>% dplyr::summarize(sum(pheno_group_sig_cnt)))[,2] != 0
     groups <- unique(unname(icd_names[unique(data$pheno_group)]))[keep]
     col.pal <- icd_colors[unique(data$pheno_group)][keep]
   }else if(group_type == 'both'){
@@ -688,7 +689,7 @@ complex_pheno_upset <- function(group_type, test_type, max_size =100, save = T, 
   }
   p <- group_upset_plot(data, group_type, test_type, groups, query.list, max_size, group_metadata = group_metadata)
   # if(save){
-  #   png(paste0(figure_path, group_type, '_domain_level_gene_sig_', test_type, '_', tranche, '.png'), 
+  #   png(paste0(figure_path, group_type, '_domain_level_gene_sig_', test_type, '_', tranche, '.png'),
   #       height = height, width = width, units = 'in', res = 300)
   #   print(p)
   #   dev.off()
@@ -697,7 +698,7 @@ complex_pheno_upset <- function(group_type, test_type, max_size =100, save = T, 
 }
 
 
-## amino acid position 
+## amino acid position
 get_amino_acid_data <- function(data){
   p_data = data %>%
     # filter(annotation == 'missense') %>%
@@ -717,9 +718,9 @@ save_amino_acid_figure <- function(data, gene, save = T){
     # filter(as.numeric(position)>200 & as.numeric(position)<400) %>%
     mutate(annotation = factor(if_else(annotation %in% c('missense', 'LC'), 'missense|LC', annotation), levels = annotation_types))%>%
     filter(annotation != 'synonymous') %>%
-    ggplot + aes(x = as.numeric(position), y = BETA, color = phenocode) + 
-    geom_point(size = 0.5) + 
-    geom_hline(yintercept = 0, lty=2) + 
+    ggplot + aes(x = as.numeric(position), y = BETA, color = phenocode) +
+    geom_point(size = 0.5) +
+    geom_hline(yintercept = 0, lty=2) +
     # ylim(-1.5,1.5) +
     # xlim(200, 400) +
     labs(x = paste0(gene, '- Amino Acid Position'))+
@@ -728,7 +729,7 @@ save_amino_acid_figure <- function(data, gene, save = T){
     scale_color_brewer(palette = 'Set1') +
     themes + theme(axis.title = element_text(size = 12),
                    axis.text = element_text(size = 8.5),
-                   strip.text = element_text(size = 12)) + 
+                   strip.text = element_text(size = 12)) +
     facet_wrap(~annotation, ncol = 1, labeller = label_type)
   if(save){
     png(paste0(figure_path, gene, "_amino_acid_position.png"), width=6, height=6, units = 'in', res = 300)
@@ -744,14 +745,14 @@ icd_color_schema <- function(save_plot = T){
   x_offset = rep(0.25, 24)
   y_offset = rep(0.25, 24)
   col_data = data.frame(x, y, x_offset, y_offset, icd_group = names(icd_colors), icd_colors)
-  
+
   figure = col_data %>%
-    ggplot + aes(x = x , 
+    ggplot + aes(x = x ,
                  y = y, label = paste(icd_group, '\n', icd_names[icd_group], '\n', icd_colors), fill = icd_colors) +
     geom_tile(color = icd_colors, fill=icd_colors) + theme_void() +
     scale_fill_manual(values = icd_colors)+
     geom_text(fontface='bold')
-  
+
   if(save_plot){
     png(paste0(figure_path, 'icd_color_schema.png'), height = 7.5, width = 10, units = 'in', res = 300)
     print(figure)
@@ -786,18 +787,18 @@ figure_beta_triplets_all_annt <- function(data, gene_name, phenocode1, phenocode
   figure <- wide_info %>%
     # filter(significance != 'None') %>%
     mutate(annotation = factor(annotation, levels=annotation_types)) %>%
-    ggplot + 
+    ggplot +
     aes(x=get(paste0('BETA_',phenocode1)), y=get(paste0('BETA_',phenocode2)), color = annotation)  +
     # aes(x=sqrt(2*AF*(1-AF))*pvalue_info[,paste0('beta_',phenocode1)], y=sqrt(2*AF*(1-AF))*pvalue_info[,paste0('beta_',phenocode2)], color = annotation, size = -log(mean_p)) +
-    # labs(x=pheno1_name, y=pheno2_name, title =paste0(gene_name, '-', annotation) ) + 
+    # labs(x=pheno1_name, y=pheno2_name, title =paste0(gene_name, '-', annotation) ) +
     geom_point(aes(pch = significance), size = 2.5) +
     # geom_abline(data = c_hat %>%
     #               mutate(annotation = factor(annotation, levels=annotation_types)), aes(slope = 1/c_hat, intercept = 0, color = annotation), lwd =0.5) +
-    geom_vline(xintercept = 0, lty=2, lwd = 0.25) + 
-    geom_hline(yintercept = 0, lty=2, lwd = 0.25) + 
-    annotation_color_scale + annotation_fill_scale + 
-    labs(x=paste0(pheno1_name), y=pheno2_name, title = NULL) + 
-    scale_shape_manual(name=paste0('Nominal significance (', threshold, ')'), breaks = c('Both', pheno1_name, pheno2_name, 'None'), values=c("\u25CF", "\u25D0","\u25D1", "\u25CB")) + 
+    geom_vline(xintercept = 0, lty=2, lwd = 0.25) +
+    geom_hline(yintercept = 0, lty=2, lwd = 0.25) +
+    annotation_color_scale + annotation_fill_scale +
+    labs(x=paste0(pheno1_name), y=pheno2_name, title = NULL) +
+    scale_shape_manual(name=paste0('Nominal significance (', threshold, ')'), breaks = c('Both', pheno1_name, pheno2_name, 'None'), values=c("\u25CF", "\u25D0","\u25D1", "\u25CB")) +
     geom_text_repel(data = raw_results_500k %>% filter(gene==gene_name & pheno1==phenocode1 & pheno2==phenocode2) %>%
                       mutate(annotation = factor(annotation, levels=annotation_types)), aes(x=2, y= -2, label=formatC(pvalue, format = "e", digits = 2), color=annotation, size =5), vjust = 1)+
     facet_wrap(~annotation, labeller = label_type) +
@@ -814,39 +815,39 @@ figure_beta_triplets_all_annt <- function(data, gene_name, phenocode1, phenocode
 ppi_figure <- function(data, name, save){
   library(STRINGdb)
   # data <- read.csv(paste0(data_path, 'gene_phewas_burden_sig_count_239.csv'), sep = '\t')
-  
+
   string_db <- STRINGdb$new(version="11.5",
                             species=9606,
                             score_threshold=0,
                             input_directory=tmp_dir)
-  
-  gene_data_map = data %>% 
+
+  gene_data_map = data %>%
     as.data.frame %>% #function doesn't work with tibbles
     string_db$map('gene_symbol', removeUnmappedRows = F) %>%
     as_tibble()
-  
-  ints <- string_db$get_interactions(gene_data_map$STRING_id) %>% 
-    dplyr::select(from, to, combined_score) %>% 
+
+  ints <- string_db$get_interactions(gene_data_map$STRING_id) %>%
+    dplyr::select(from, to, combined_score) %>%
     as_tibble()
-  
+
   # Subset to high confidence
   ints.hc <- ints %>%
     dplyr::filter(combined_score >= 700)
   # Init net
   net <- as_tbl_graph(ints.hc)
-  
+
   #Stats
-  net %<>% produce_stats() 
-  # Multiple components, reduce to largest and rerun stats. 
+  net %<>% produce_stats()
+  # Multiple components, reduce to largest and rerun stats.
   net <- to_components(net)[[1]]
-  
+
   net %<>% produce_stats() %>%
     dplyr::mutate(unweighted_degree = centrality_degree(),
                   local_transitivity = local_transitivity())
-  nds <- net %N>% as_tibble 
+  nds <- net %N>% as_tibble
   nds <- nds %>% left_join(gene_data_map, by=c('name' = 'STRING_id')) %>%
     dplyr::select(name, gene_symbol, tidyselect::everything())
-  
+
   p <- nds %>%
     filter(annotation != 'pLoF|missense|LC') %>%
     select(gene_symbol, annotation, CAF, centrality_degree, n_phewas_sig) %>%
@@ -858,17 +859,17 @@ ppi_figure <- function(data, name, save){
     dplyr::summarize(Mean = mean(centrality_degree, na.rm = T),
                      SD = sd(centrality_degree, na.rm = T),
                      total= n()) %>%
-    ggplot + aes(x = group, y = Mean, 
+    ggplot + aes(x = group, y = Mean,
                  ymin = Mean - 1.96 * SD / sqrt(total),
                  ymax = Mean + 1.96 * SD / sqrt(total),
                  color = annotation) +
-    labs(x = 'Pleiotropy: Number of associations', y = 'Mean number of\nprotein-protein interactions') + 
-    geom_pointrange() + 
+    labs(x = 'Pleiotropy: Number of associations', y = 'Mean number of\nprotein-protein interactions') +
+    geom_pointrange() +
     annotation_color_scale2 +
     geom_text_repel(aes(label=total)) +
-    facet_grid(~annotation, labeller = label_type) + themes + 
+    facet_grid(~annotation, labeller = label_type) + themes +
     theme(legend.position = 'top')
-  
+
   if(save){
     png(paste0(figure_path, name, '.png'), height = 4, width = 7.5, units = 'in', res = 300)
     print(p)
@@ -879,50 +880,50 @@ ppi_figure <- function(data, name, save){
 
 save_null_sim_figures <- function(data, pi_value=0.5, name, save=T){
   data <- data %>%
-    filter(pi == pi_value)
-  qq_data <- data %>% 
-    group_by(par_set) %>%
-    arrange(pvalue) %>%
+    dplyr::filter(pi == pi_value)
+  qq_data <- data %>%
+    dplyr::group_by(par_set) %>%
+    dplyr::arrange(pvalue) %>%
     add_count() %>%
-    mutate(observed = -log10(pvalue), 
-           rank = order(pvalue), 
+    dplyr::mutate(observed = -log10(pvalue),
+           rank = order(pvalue),
            expected = -(log10(rank / (n+1))))
-  
-  p1 <- qq_data %>% 
-    mutate(n_var = factor(n_var, levels = all_n_var, labels= paste('N(var) = ', all_n_var)),
+
+  p1 <- qq_data %>%
+    dplyr::mutate(n_var = factor(n_var, levels = all_n_var, labels= paste('N(var) = ', all_n_var)),
            c = factor(c, levels = all_c, labels= paste('c = ', all_c))) %>%
-    ggplot+ aes(y = observed, x = expected, color = factor(r)) + 
-    geom_point(size = 0.5) + 
+    ggplot+ aes(y = observed, x = expected, color = factor(r)) +
+    geom_point(size = 0.5) +
     geom_abline(intercept = 0, slope = 1) +
     labs(x = expression(Expected -log[10](p)), y = expression(Observed -log[10](p)), color = 'Phenotypic correlation') +
     scale_color_brewer(name = 'Phenotypic\nCorrelation (r)', palette = 'RdYlBu') +
     scale_fill_brewer(name = 'Phenotypic\nCorrelation (r)', palette = 'RdYlBu') +
     xlim(0,max(qq_data$observed, qq_data$expected)) +
     ylim(0,max(qq_data$observed, qq_data$expected)) +
-    themes + theme(legend.position = 'right', legend.direction = 'vertical', plot.margin = unit(c(0.7,0,0,0.5), "cm"))+ 
-    facet_grid(n_var~c) 
-  
-  p2 <- data %>% 
-    group_by(r,c,n_var) %>%
-    summarise(typeIerror = sum(pvalue<0.05)/n()) %>%
-    mutate(n_var = factor(n_var, levels = all_n_var, labels= paste(all_n_var)),
+    themes + theme(legend.position = 'right', legend.direction = 'vertical', plot.margin = unit(c(0.7,0,0,0.5), "cm"))+
+    facet_grid(n_var~c)
+
+  p2 <- data %>%
+    dplyr::group_by(r,c,n_var) %>%
+    dplyr::summarize(typeIerror = sum(pvalue<0.05)/n()) %>%
+    dplyr::mutate(n_var = factor(n_var, levels = all_n_var, labels= paste(all_n_var)),
            c = factor(c, levels = all_c, labels= paste('c = ', all_c))) %>%
-    ggplot + 
-    aes(y = typeIerror, x = r, color = n_var, group = n_var) + 
+    ggplot +
+    aes(y = typeIerror, x = r, color = n_var, group = n_var) +
     geom_point() +
-    geom_line() + 
+    geom_line() +
     geom_hline(yintercept = 0.05, lty=2) +
     scale_x_continuous(breaks = c(-1, -0.8, -0.5, -0.2, 0, 0.2, 0.5, 0.8, 1)) +
-    scale_y_continuous(breaks = c(0, 0.05, 0.1)) + 
+    scale_y_continuous(breaks = c(0, 0.05, 0.1)) +
     labs(x = "Phenotypic correlation", y = "Type I Error", color = 'Number of variants') +
     scale_color_jama() +
-    scale_fill_jama() + 
+    scale_fill_jama() +
     themes + theme(legend.position = 'right',
-                   plot.margin = unit(c(1,0,0,0.5), "cm")) + 
-    facet_wrap(~c, nrow = 2) 
-  p <- ggpubr::ggarrange(p1, p2, 
+                   plot.margin = unit(c(1,0,0,0.5), "cm")) +
+    facet_wrap(~c, nrow = 2)
+  p <- ggpubr::ggarrange(p1, p2,
                          labels = c('(A) QQ plot of ALLSPICE results on simulation data', '(B) Type I Error distribution'),
-                         nrow=2, vjust = 2, hjust = 0, font.label = list(size = 10, color = "black", face = "bold", family = NULL), 
+                         nrow=2, vjust = 2, hjust = 0, font.label = list(size = 10, color = "black", face = "bold", family = NULL),
                          heights = c(0.2, 0.12))
   if(save){
     png(paste0(figure_path, name, '.png'), height = 8, width = 8, units = 'in', res = 300)
@@ -934,20 +935,20 @@ save_null_sim_figures <- function(data, pi_value=0.5, name, save=T){
 
 
 save_alt_sim_figure <- function(data, name, save){
-  data <- data %>% 
-    group_by(par_set, r, n_var, pi) %>%
+  data <- data %>%
+    dplyr::group_by(par_set, r, n_var, pi) %>%
     dplyr::summarize(power = sum(pvalue<0.05)/n())
-  
+
   figure <- data %>%
-    mutate(pi = factor(pi, levels = all_pi, labels= paste('\u03c0 =', all_pi)) )%>% 
-    ggplot+ aes(y = power, x = n_var, color = factor(r), group=factor(r)) + 
-    geom_point() + 
-    geom_line() + 
+    dplyr::mutate(pi = factor(pi, levels = all_pi, labels= paste('\u03c0 =', all_pi)) )%>%
+    ggplot+ aes(y = power, x = n_var, color = factor(r), group=factor(r)) +
+    geom_point() +
+    geom_line() +
     scale_x_log10()+
     labs(y = "Power", x = 'Number of variants', color = 'Phenotypic Correlation (r)',pch = 'Number of variants') +
     scale_color_brewer(name = 'Phenotypic correlation (r)', palette = 'RdYlBu') +
     scale_fill_brewer(name = 'Phenotypic correlation (r)', palette = 'RdYlBu') +
-    themes + 
+    themes +
     facet_grid(~pi)
   if(save){
     png(paste0(figure_path, name, '.png'), height = 3, width = 6, units = 'in', res = 300)
@@ -961,39 +962,39 @@ loeuf_logistic_reg <- function(data, field, type, cut, write=FALSE){
   print(table(data$annotation, data$domain_category))
   data$field <- data [, field]
   sub_data <- data %>%
-    filter(domain_category %in% c(type, 'Non-associated')) %>%
-    mutate(y = if_else(domain_category == type, 1, 0)) %>%
+    dplyr::filter(domain_category %in% c(type, 'Non-associated')) %>%
+    dplyr::mutate(y = if_else(domain_category == type, 1, 0)) %>%
     dplyr::select(field, y, cds_length, domain_category) %>%
-    filter(complete.cases(.)) %>%
+    dplyr::filter(complete.cases(.)) %>%
     distinct(.)
-  
-  model <- glm(y ~ field + cds_length ,family=binomial(link='logit'), 
+
+  model <- glm(y ~ field + cds_length ,family=binomial(link='logit'),
                data=sub_data)
-  
+
   sub_data <- sub_data %>%
-    mutate(prediction = predict(model),
+    dplyr::mutate(prediction = predict(model),
            residual = residuals(model))
   auc <- roc(sub_data$y, sub_data$prediction)$auc
-  
+
   p1 <- sub_data %>%
-    filter(prediction < cut) %>%
+    dplyr::filter(prediction < cut) %>%
     ggplot + aes(x = prediction, y = residual,colour = domain_category) +
-    geom_point( )+ 
+    geom_point( )+
     geom_hline(yintercept = 0, lty = 2) +
-    scale_color_manual(breaks=c(type, 'Non-associated'), 
-                       labels=c(type, 'Non-associated'), 
+    scale_color_manual(breaks=c(type, 'Non-associated'),
+                       labels=c(type, 'Non-associated'),
                        values = c( '#cc3311', '#004488')) +
     labs(x = 'Prediction', y = 'Residual', color = NULL) + themes
-  
+
   p2 <- sub_data %>%
-    ggplot + aes(d = y, m = prediction) + 
-    labs(x = 'False positive rate', y = 'True positive rate') + 
+    ggplot + aes(d = y, m = prediction) +
+    labs(x = 'False positive rate', y = 'True positive rate') +
     geom_roc(n.cuts = 0) +
-    geom_abline() + 
+    geom_abline() +
     annotate(x = Inf, y = 0, label = paste('AUC:', round(auc,3)), geom='text', hjust = 1) + themes
-  
+
   pp <- ggpubr::ggarrange(p1, p2, ncol=2)
-  
+
   model1 <- sub_data %>%
     do(tidy(glm(y ~ field + cds_length ,family=binomial(link='logit'), data=.)))
   print(model1)
@@ -1003,5 +1004,83 @@ loeuf_logistic_reg <- function(data, field, type, cut, write=FALSE){
   return(pp)
 }
 
-## heterogeneity test result
+plot_sig_result_matrix <- function(data, annot){
+  grids<- expand_grid(
+    phenotype1_grp = levels(data$phenotype1_grp),
+    phenotype2_grp = levels(data$phenotype2_grp)
+  )
+
+  data$phenotype1_grp <- factor(
+    data$phenotype1_grp,
+    levels = unique(data$phenotype1_grp[order(data$gene)])
+  )
+
+  data$phenotype2_grp <- factor(
+    data$phenotype2_grp,
+    levels = unique(data$phenotype2_grp[order(data$gene)])
+  )
+
+  na_cells <- data %>%
+    filter(is.na(logp)) %>%
+    mutate(phenotype1_grp = factor(phenotype1_grp, levels = unique(data$phenotype1_grp[order(data$gene)])),
+           phenotype2_grp = factor(phenotype2_grp, levels = unique(data$phenotype2_grp[order(data$gene)])),
+    )
+
+  colors <- c(color_lof, color_mis)
+  sizes <- c(6, 6)
+  names(colors) <- c('pLoF', 'missense|LC')
+  names(sizes) <- c('pLoF', 'missense|LC')
+
+  p <- data %>%
+    ggplot + aes(x = phenotype1_grp, y = phenotype2_grp) +
+    geom_tile(
+      aes(fill = logp),
+      color = NA
+    ) +
+    geom_text(
+      data = na_cells,
+      label = "*",
+      size = 5,
+      vjust = 0.8,
+      color = "white"
+    ) +
+    # 1) draw borders for every cell (no fill)
+    geom_tile(
+      data = grids,
+      aes(x = phenotype1_grp, y = phenotype2_grp),
+      fill = NA,
+      color = "gray90",
+      linewidth = 0.1
+    ) +
+    # 2) overlay only the observed cells with fill
+    scale_x_discrete(breaks = data$phenotype1_grp) +
+    scale_y_discrete(breaks = data$phenotype2_grp) +
+    scale_fill_gradient(
+      name = expression(-log[10](p[ALLSPICE])),
+      low = "beige",
+      high = colors[annot],
+      na.value = colors[annot],
+    ) +
+    facet_grid(~annotation, labeller=label_type) + themes +
+    theme(
+      axis.text.x = element_text(angle = 90, hjust = 1),
+      axis.text = element_text(size = sizes[annot], family = "mono"),
+      axis.title = element_blank(),
+      axis.line = element_blank(),
+      axis.ticks = element_blank(),
+      legend.position = 'top', legend.direction = 'horizontal',
+      legend.margin = margin(0, 0, 0, 0),
+      legend.box.spacing = unit(0, "pt"),
+      legend.text = element_text(size = 5), legend.title = element_text(size = 6),
+      strip.background = element_rect(fill = "white", size=0.5, color = 'gray90'),
+      strip.text = element_text(face = 'bold', size = 10)
+    ) + guides(
+      fill = guide_colorbar(
+        barheight = unit(6, "pt"),
+        barwidth  = unit(40, "pt")
+      )
+    )
+  return(p)
+}
+
 

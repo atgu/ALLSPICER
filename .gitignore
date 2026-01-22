@@ -1,0 +1,17 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+inst/doc
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# R checks / build artifacts
+*.Rcheck/
+..Rcheck/
+ALLSPICER.Rcheck/
+analysis/tmpStringDB/
+tmpStringDB/
+

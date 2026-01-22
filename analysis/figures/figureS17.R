@@ -1,7 +1,12 @@
 source('~/Dropbox (Partners HealthCare)/github_repo/ALLSPICER/analysis/R/constants.R')
 
-raw_results_500k <- read_pleiotropy_results('burden', '500k')
+raw_results_500k <- read_csv('~/Dropbox (Partners HealthCare)/analysis/ukb_exomes_pleiotropy/ALLSPICE/continuous_ALL_AC_5_burden_syn_var_corr_500k_2024_results_corr.csv')
 results_500k <- modify_results_table(raw_results_500k, 'burden', '500k')
+results_500k %>%
+  group_by(annotation) %>%
+  dplyr::summarize(sig05 = sum(pvalue < 0.05))
+sig_results_500k <- results_500k %>% filter(pvalue < 4.24e-6)
+
 
 figure_real_data_qq <- function(results, name=NULL, save=TRUE){
   results <- results %>%
@@ -36,8 +41,8 @@ figure_real_data_qq <- function(results, name=NULL, save=TRUE){
   return(figure)
 }
 
-p1 <- figure_real_data_qq(results_500k %>% filter(n_cases1 > 300000 & n_cases2 > 300000), save = F)
-p2 <- results_500k %>%
+p1 <- figure_real_data_qq(results_500k %>% filter(sig_gene == 2 & corr < 0.9), save = F)
+p2 <- results_500k %>% filter(sig_gene == 2 & corr < 0.9)%>%
   mutate(annotation = factor(annotation, levels = annotation_types)) %>%
   ggplot +
   aes(x = corr, y = -log10(pvalue), color = annotation, size = n_var) +
@@ -45,7 +50,7 @@ p2 <- results_500k %>%
   geom_point(alpha = 0.5) +
   annotation_color_scale +
   # scale_y_log10() +
-  geom_hline(yintercept = -log10(0.05/11810), lty = 2) +
+  geom_hline(yintercept = -log10(0.05/nrow(results_500k)), lty = 2) +
   # geom_vline(xintercept = c(-0.1, 0.1, 0.8, 1), lty = 2) +
   scale_size_continuous(range = c(0.01, 4)) +
   facet_grid(~annotation, labeller = labeller(annotation = annotation_names)) + themes + theme(legend.position = 'top')
@@ -59,23 +64,37 @@ p3 <- results_500k %>%
   scale_y_log10(label = comma) + labs(y = 'Number of variants', x = NULL) +
   geom_boxplot(width = 0.2, size = 0.75) + annotation_color_scale +
   facet_wrap(~annotation, labeller=label_type, nrow=1, scale = 'free') +
-  guides(color = 'none') + themes +
-  theme(axis.text.x = element_text(angle = 30, hjust =1))
+  guides(color = 'none') + themes
+
+pLoF_sig <- format_sig_result_matrix(sig_results_500k, annot='pLoF')
+p41 <- plot_sig_result_matrix(pLoF_sig, annot='pLoF')
+
+mis_sig <- format_sig_result_matrix(sig_results_500k, annot='missense|LC')
+p42 <- plot_sig_result_matrix(mis_sig, annot='missense|LC')
+
+p4 <- ggpubr::ggarrange(p41, p42, nrow=1, hjust = 0, align = 'h', widths = c(1.5, 1.2),
+                             font.label = list(size = 10, color = "black", face = "bold", family = 'Arial')
+)
 
 figure <- ggpubr::ggarrange(p1 +
                               theme(axis.title = element_text(face = 'plain', size = 11),
                                     plot.margin = unit(c(1,0,0,0.5), "cm"), legend.position = 'none'),
-                            p2+ guides(color = "none") +
+                            p2 + guides(color = "none") +
                               theme(axis.title = element_text(face = 'plain', size = 11),
                                     plot.margin = unit(c(0.7,0,0,0.5), "cm")),
                             p3 +
                               theme(axis.title = element_text(face = 'plain', size = 11),
                                     plot.margin = unit(c(1,0,0,0.5), "cm"), legend.position = 'none'),
+                            p4 +
+                              theme(axis.title = element_text(face = 'plain', size = 11),
+                                    plot.margin = unit(c(1,0,0,0.5), "cm"), legend.position = 'none'),
                             labels = c('(A) QQ plots of ALLSPICE test results across high-quality phenotypes',
                                        '(B) Relationship between phenotypic correlation and ALLSPICE p-value',
-                                       '(C) Number of variants in triplets across significance levels'),
-                            ncol=1, vjust = 2, hjust = 0, font.label = list(size = 10, color = "black", face = "bold", family = NULL),
-                            heights = c(0.18, 0.2, 0.18))
-png(paste0(figure_path,'figureS14.png'), height = 8, width = 10, units = 'in', res = 300)
+                                       '(C) Number of variants in triplets across significance levels',
+                                       '(D) Triplets strictly significant in ALLSPICE test (p-value < 4.24e-6)'
+                                       ),
+                            ncol=1, vjust = 2, hjust = 0, font.label = list(size = 10, color = "black", face = "bold", family = NULL), heights = c(0.18, 0.2, 0.18, 0.4))
+
+png(paste0(figure_path,'figureS17.png'), height = 15, width = 12, units = 'in', res = 300)
 print(figure)
 dev.off()
