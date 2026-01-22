@@ -26,7 +26,7 @@ get_ac_mat <- function(n_var, max_cnt = 100){
 }
 
 get_af_mat <-function(AC, n_ind){
-  A <- AC/(2*n_ind)
+  A <- AC/n_ind
   return(A)
 }
 

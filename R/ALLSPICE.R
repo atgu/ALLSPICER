@@ -64,6 +64,9 @@ ALLSPICE <- function(data, pheno_corr, n_ind, gene='GENENAME', pheno1='PHENO1', 
 #' @param sigma variance of the two sets of effect sizes
 #' @param mle whether to use MLE of c to compute the test statistic, use true c value if FALSE
 #' @param null whether to simulate data under the null hypothesis (no linear relationship) or the alternative hypothesis
+#' @param mode simulation mode for alternative hypothesis: "linear" (default), "nonlinear_poly", or "correlated"
+#' @param rho correlation parameter for "correlated" mode, must be between -1 and 1
+#' @param sigma_eps variance of the error term for "nonlinear_poly" mode
 #'
 #' @return A list of two pieces of results:
 #' 1) ALLSPICE test results
@@ -73,11 +76,13 @@ ALLSPICE <- function(data, pheno_corr, n_ind, gene='GENENAME', pheno1='PHENO1', 
 #'
 #' @export
 
-ALLSPICE_simulation <- function(n_ind, n_var, c, r, pi, sigma, mle = TRUE, null=TRUE){
+ALLSPICE_simulation <- function(n_ind, n_var, c, r, pi, sigma, mle = TRUE, null=TRUE, 
+                                mode = c("linear", "nonlinear_poly", "correlated"), 
+                                rho = 0.5, sigma_eps = sigma){
   AC <- get_ac_mat(n_var)
   A <- get_af_mat(AC, n_ind)
   X <- get_geno_mat(AC, n_ind)
-  b <- get_true_beta(n_var, c, pi, sigma, null=null)
+  b <- get_true_beta(n_var, c, pi, sigma, null=null, mode = mode, rho = rho, sigma_eps = sigma_eps)
   Y <- get_pheno_pair(b, X, r)
   b_hat <- get_beta_hat(Y, X, A, n_ind)
   b1_hat <- matrix(b_hat[1, ], nrow = 1)

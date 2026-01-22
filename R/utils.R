@@ -24,12 +24,13 @@ get_single_geno <- function(cnt, n_ind){
 #'
 #' simulation function: simulate genotype information for a set of loci with allele counts `AC`
 #'
-#' @param AC allele counts of loci (length `m`)
-#' @param n_ind total number of indicitions
+#' @param AC allele counts of loci (diagonal matrix or vector of length `m`)
+#' @param n_ind total number of individuals
 #'
 #' @return An `n_ind`x`m` matrix of genotype information of `n_ind` individuals and `m` variants
 #' @examples
-#' geno_mat <- get_geno_mat(AC = c(20, 50, 10, 1, 5), n_ind = 10000)
+#' AC <- get_ac_mat(n_var=100)
+#' geno_mat <- get_geno_mat(AC = AC, n_ind = 10000)
 #' @export
 
 get_geno_mat <- function(AC, n_ind){
@@ -58,18 +59,19 @@ get_ac_mat <- function(n_var, max_cnt = 100){
 
 #' get_af_mat
 #'
-#' simulation function: compute allele frequency information variants with allele counts stored in diagonal matrix `AC` from a population of sample size `n_ind`
+#' simulation function: compute allele frequency information for variants with allele counts stored in diagonal matrix `AC` from a population of sample size `n_ind`
 #'
 #' @param AC a diagonal matrix of allele count information for all variants
 #' @param n_ind total number of individuals in the population
 #'
-#' @return A `n_var`x`n_var` diagnal matrix of allele frequency information for `n_var` (dimension of `AC`) variants
+#' @return A `n_var`x`n_var` diagonal matrix of allele frequency information for `n_var` (dimension of `AC`) variants
 #' @examples
-#' af_mat <- get_af_mat(AC = c(20, 50, 10, 1, 5), n_ind = 10000)
+#' AC <- get_ac_mat(n_var=100)
+#' af_mat <- get_af_mat(AC = AC, n_ind = 10000)
 #' @export
 
 get_af_mat <-function(AC, n_ind){
-  A <- AC/n_ind
+  A <- AC/(2*n_ind)
   return(A)
 }
 
@@ -80,20 +82,48 @@ get_af_mat <-function(AC, n_ind){
 #'
 #' @param n_var total number of variants
 #' @param c slope between the two sets of variant effect sizes, only applicable when `null` == TRUE
-#' @param pi probability of variant of having no effect on the phenotype
+#' @param pi probability of variant having no effect on the phenotype
 #' @param sigma variance of the two sets of effect sizes
-#' @param null whether to simulate data under the null hypothesis (no linear relationship) or the alternative hypothesis
+#' @param null whether to simulate data under the null hypothesis (linear relationship) or the alternative hypothesis (free relationship)
+#' @param mode simulation mode for alternative hypothesis: "linear" (default), "nonlinear_poly" (polynomial relationship), or "correlated" (correlated effects)
+#' @param rho correlation coefficient for "correlated" mode, must be between -1 and 1 (default 0.5)
+#' @param sigma_eps variance of the error term for "nonlinear_poly" mode (default sigma)
 #'
 #' @return A 2x`n_var` matrix of effect size information for `n_var` variants (first row corresponds to the first phenotype, second row corresponds to the second phenotype)
 #' @examples
 #' true_beta <- get_true_beta(n_var=100, c=0.6, pi=0.5, sigma=1, null=TRUE)
+#' true_beta_alt <- get_true_beta(n_var=100, c=0.6, pi=0.5, sigma=1, null=FALSE, mode="correlated", rho=0.8)
 #' @export
 
-get_true_beta <- function(n_var, c, pi, sigma, null=TRUE){
-  b2 <- rbinom(n_var, 1, pi) * rnorm(n_var, 0, sigma)
-  b1 <- rbinom(n_var, 1, pi) * rnorm(n_var, 0, sigma)
+get_true_beta <- function(n_var, c, pi, sigma, null = TRUE,
+                          mode = c("linear", "nonlinear_poly", "correlated"),
+                          rho = 0.5, sigma_eps = sigma){
+  if (!null) mode <- match.arg(mode)
+  if (!null && mode == "correlated" && (rho < -1 || rho > 1)) {
+    stop("rho must be between -1 and 1.")
+  }
+
+  z1 <- rnorm(n_var, 0, sigma)
+  z2 <- rnorm(n_var, 0, sigma)
+
+  g1 <- rbinom(n_var, 1, pi)
+  g2 <- rbinom(n_var, 1, pi)
+
+  # NULL: perfect linear relationship
   if(null){
+    b2 <- g2 * z2
     b1 <- c * b2
+  } else if(mode == "nonlinear_poly"){
+    b2 <- g2 *z2
+    b1 <- g1 * (b2 + b2^2) +
+      g1 * rnorm(n_var, 0, sigma_eps)
+
+  } else if(mode == "correlated"){
+    b2 <- g2 * z2
+    b1 <- g2 * (rho * z2 + sqrt(1 - rho^2) * z1)
+  }else{ # completely free alternative
+    b2 <- g2 * z2
+    b1 <- g1 * z1
   }
   b <- matrix(c(b1, b2), nrow = 2, byrow = T)
   return(b)
