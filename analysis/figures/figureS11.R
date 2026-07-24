@@ -18,7 +18,7 @@ data_599 <- read.csv(paste0(data_path, 'gene_phewas_burden_sig_count_599.csv'), 
   mutate(interval = factor(interval, levels = c('(0.0001, 0.001]', '(0.001, 0.01]', '(0.01, 0.1]', '(0.1, 1]'),
                            labels = c('(0.01%, 0.1%]', '(0.1%, 1%]', '(1%, 10%]', paste0('(10%, ', bquote("\U221E"), ' )') )))
 
-ppi_599 <- ppi_figure(data_599, name = 'figureS4/figureS4_ppi_599', save = T)
+ppi_599 <- ppi_figure(data_599, name = 'figureS11/figureS11_ppi_599', save = T)
 
 
 data_239 <- read.csv(paste0(data_path, 'gene_phewas_burden_sig_count_239.csv'), sep = '\t') %>%
@@ -26,7 +26,7 @@ data_239 <- read.csv(paste0(data_path, 'gene_phewas_burden_sig_count_239.csv'), 
   mutate(interval = factor(interval, levels = c('(0.0001, 0.001]', '(0.001, 0.01]', '(0.01, 0.1]', '(0.1, 1]'),
                            labels = c('(0.01%, 0.1%]', '(0.1%, 1%]', '(1%, 10%]', paste0('(10%, ', bquote("\U221E"), ' )') )))
 
-ppi_239 <- ppi_figure(data_239, name = 'figureS4/figure2_ppi_239', save = T)
+ppi_239 <- ppi_figure(data_239, name = 'figureS11/figureS11_ppi_239', save = T)
 
 figure <- ggpubr::ggarrange(ppi_599 +
                               theme(legend.title = element_text(face = 'plain', size = 11),
@@ -40,6 +40,6 @@ figure <- ggpubr::ggarrange(ppi_599 +
                                        '(B) Number of protein-protein interactions across genes among 239 independent phenotypes'),
                             nrow=2, vjust = 2, hjust = 0, font.label = list(size = 10, color = "black", face = "bold", family = NULL),
                             common.legend=TRUE, heights = c(0.2, 0.18))
-png(paste0(figure_path,'figureS4.png'), height = 6, width = 8, units = 'in', res = 300)
+png(paste0(figure_path,'figureS11.png'), height = 6, width = 8, units = 'in', res = 300)
 print(figure)
 dev.off()

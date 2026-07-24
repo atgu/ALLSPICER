@@ -40,6 +40,6 @@ figure <- gene_summary  %>%
   theme(axis.text.x = element_text(angle=15, hjust=1, size = 6))
 figure
 
-png(paste0(figure_path,'figureS2.png'), height = 4, width = 6, units = 'in', res = 300)
+png(paste0(figure_path,'figureS9.png'), height = 4, width = 6, units = 'in', res = 300)
 print(figure)
 dev.off()

@@ -10,6 +10,7 @@ table(pheno_info$pheno_group)
 table(pheno_info$disease_group)
 
 
+
 p1 <- pheno_info %>%
   group_by(pheno_group) %>%
   dplyr::summarize(cnt = n()) %>%
@@ -202,13 +203,13 @@ p6 <- p6 +
 # pp <- p/ p3 /p6 + plot_layout(heights = unit(c(3,2,1), c("null","null","null")), widths = unit(c(2,2,0.5), c("null","null","null")))
 
 pp <- p/p3
-png(paste0(figure_path, 'ext_figure1/ext_figure1_upper.png'), width=7, height=6, units = 'in', res = 300)
+png(paste0(figure_path, 'figureS13/figureS13_upper.png'), width=7, height=6, units = 'in', res = 300)
 print(pp)
 dev.off()
 
-p_upper <- ggplot_pdf(image_read(paste0(figure_path, 'ext_figure1/ext_figure1_upper.png')))
+p_upper <- ggplot_pdf(image_read(paste0(figure_path, 'figureS13/figureS13_upper.png')))
 pp <- ggpubr::ggarrange(p_upper, p6, nrow=2,heights = c(4, 2), font.label = list(size = 9, color = "black", face = "bold", family = NULL), hjust =0)
-png(paste0(figure_path, 'ext_figure1.png'), width=7, height=9, units = 'in', res = 300)
+png(paste0(figure_path, 'figureS13.png'), width=7, height=9, units = 'in', res = 300)
 print(pp)
 dev.off()
 
@@ -221,6 +222,6 @@ p <- ggpubr::ggarrange(p2+
                        font.label = list(size = 9, color = "black", face = "bold", family = NULL), hjust =0)
 p <- p/ p4
 
-png(paste0(figure_path, 'figureS6.png'), width=7, height=6, units = 'in', res = 300)
+png(paste0(figure_path, 'figureS14.png'), width=7, height=6, units = 'in', res = 300)
 print(p)
 dev.off()

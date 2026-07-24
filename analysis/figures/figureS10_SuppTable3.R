@@ -63,7 +63,7 @@ figure_599_full
 figure <- ggpubr::ggarrange(figure_599_full, figure_239_full,
                             labels = c('(A) Proportion of pleiotropic genes among 599 high-quality phenotypes', '(B) Proportion of pleiotropic genes among 239 independent phenotypes'),
                             nrow=2, common.legend=TRUE, vjust = 1.5, hjust = -0.1, font.label = list(size = 10, color = "black", face = "bold", family = NULL), legend = 'bottom', heights = c(0.2, 0.18))
-png(paste0(figure_path,'figureS3.png'), height = 8, width = 8, units = 'in', res = 300)
+png(paste0(figure_path,'figureS10.png'), height = 8, width = 8, units = 'in', res = 300)
 print(figure)
 dev.off()
 

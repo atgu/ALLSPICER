@@ -11,11 +11,11 @@ top_triplets <- read_delim(paste0(data_path, "top_significant_triplets.txt.bgz")
 
 ## Protein figures
 library(cowplot)
-# p2 <- ggplot_pdf(image_read(paste0(figure_path, 'figure4_S18/ukb_pleiotropy_ALB_variants.1AO6.by_ca.colored.png'))) +
+# p2 <- ggplot_pdf(image_read(paste0(figure_path, 'figure6_S19/ukb_pleiotropy_ALB_variants.1AO6.by_ca.colored.png'))) +
 #   theme(plot.margin = unit(c(0.7,0,0,0), "cm"))
 
 p1 <- ggdraw() +
-  draw_image(image_read(paste0(figure_path, 'figure4_S18/ukb_pleiotropy_ALB_variants.1AO6.by_ca.colored.png'))) +
+  draw_image(image_read(paste0(figure_path, 'figure6_S19/ukb_pleiotropy_ALB_variants.1AO6.by_ca.colored.png'))) +
   theme(plot.margin = unit(c(0.7, 0, 0, 0), "cm")) +
   draw_label("Calcium\nbinding\nsites", x = 0.15, y = 0.53, hjust = 0.5, vjust = 0.5, color = 'orange', size = 8) +
   draw_line(
@@ -25,13 +25,13 @@ p1 <- ggdraw() +
   )
 p1
 
-p2 <- ggplot_pdf(image_read_pdf(paste0(figure_path, 'figure4_S18/ukb_pleiotropy_ALB_variants.P02768.by_phe_p0.05_0exl1.3d_dist_ca.pdf')))+
+p2 <- ggplot_pdf(image_read_pdf(paste0(figure_path, 'figure6_S19/ukb_pleiotropy_ALB_variants.P02768.by_phe_p0.05_0exl1.3d_dist_ca.pdf')))+
   theme(plot.margin = unit(c(0.7,0,0,0), "cm"))
-# p4 <- ggplot_pdf(image_read(paste0(figure_path, 'figure4_S18/ukb_pleiotropy_ALB_variants.1AO6.by_ca_betasign.colored.png')))+
+# p4 <- ggplot_pdf(image_read(paste0(figure_path, 'figure6_S19/ukb_pleiotropy_ALB_variants.1AO6.by_ca_betasign.colored.png')))+
 #   theme(plot.margin = unit(c(0.7,0,0,0), "cm"))
 
 p3 <- ggdraw() +
-  draw_image(image_read(paste0(figure_path, 'figure4_S18/ukb_pleiotropy_ALB_variants.1AO6.by_ca_betasign.colored.png'))) +
+  draw_image(image_read(paste0(figure_path, 'figure6_S19/ukb_pleiotropy_ALB_variants.1AO6.by_ca_betasign.colored.png'))) +
   theme(plot.margin = unit(c(0.7, 0, 0, 0), "cm")) +
   draw_label("Calcium\nbinding\nsites", x = 0.15, y = 0.53, hjust = 0.5, vjust = 0.5, color = 'orange', size = 8) +
   draw_line(
@@ -40,7 +40,7 @@ p3 <- ggdraw() +
     arrow = arrow(length = unit(0.03, "npc"))
   )
 p3
-p4 <- ggplot_pdf(image_read_pdf(paste0(figure_path, 'figure4_S18/ukb_pleiotropy_ALB_variants.P02768.by_phe30680_betasign_pmin0.05_exl.3d_dist_ca.legend.pdf')))+
+p4 <- ggplot_pdf(image_read_pdf(paste0(figure_path, 'figure6_S19/ukb_pleiotropy_ALB_variants.P02768.by_phe30680_betasign_pmin0.05_exl.3d_dist_ca.legend.pdf')))+
   theme(plot.margin = unit(c(0.7,0,0,0), "cm"))
 
 figure = ggpubr::ggarrange(ggpubr::ggarrange(p1, p2,
@@ -56,7 +56,7 @@ figure = ggpubr::ggarrange(ggpubr::ggarrange(p1, p2,
                            nrow=2, heights = c( 0.16, 0.15), labels = c('', ''), hjust = 0,
                            font.label = list(size = 10, color = "black", face = "bold", family = 'Arial')
                            )
-png(paste0(figure_path,'figure4.png'), height = 5.5, width = 7.5, units = 'in', res = 300)
+png(paste0(figure_path,'figure6.png'), height = 5.5, width = 7.5, units = 'in', res = 300)
 print(figure)
 dev.off()
 
@@ -64,11 +64,11 @@ dev.off()
 
 ## Protein figures
 library(cowplot)
-# p2 <- ggplot_pdf(image_read(paste0(figure_path, 'figure4_S18/ukb_pleiotropy_ALB_variants.1AO6.by_ca.colored.png'))) +
+# p2 <- ggplot_pdf(image_read(paste0(figure_path, 'figure6_S19/ukb_pleiotropy_ALB_variants.1AO6.by_ca.colored.png'))) +
 #   theme(plot.margin = unit(c(0.7,0,0,0), "cm"))
 
 p1 <- ggdraw() +
-  draw_image(image_read(paste0(figure_path, 'figure4_S18/ukb_pleiotropy_ALB_variants_ac5.1AO6.by_phe_p0.05_0exl1.colored.png'))) +
+  draw_image(image_read(paste0(figure_path, 'figure6_S19/ukb_pleiotropy_ALB_variants_ac5.1AO6.by_phe_p0.05_0exl1.colored.png'))) +
   theme(plot.margin = unit(c(0.7, 0, 0, 0), "cm")) +
   draw_label("Calcium\nbinding\nsites", x = 0.15, y = 0.53, hjust = 0.5, vjust = 0.5, color = 'orange', size = 8) +
   draw_line(
@@ -78,13 +78,13 @@ p1 <- ggdraw() +
   )
 p1
 
-p2 <- ggplot_pdf(image_read_pdf(paste0(figure_path, 'figure4_S18/ukb_pleiotropy_ALB_variants_ac5.P02768.by_phe_p0.05_0exl1.3d_dist_ca.pdf')))+
+p2 <- ggplot_pdf(image_read_pdf(paste0(figure_path, 'figure6_S19/ukb_pleiotropy_ALB_variants_ac5.P02768.by_phe_p0.05_0exl1.3d_dist_ca.pdf')))+
   theme(plot.margin = unit(c(0.7,0,0,0), "cm"))
-# p4 <- ggplot_pdf(image_read(paste0(figure_path, 'figure4_S18/ukb_pleiotropy_ALB_variants.1AO6.by_ca_betasign.colored.png')))+
+# p4 <- ggplot_pdf(image_read(paste0(figure_path, 'figure6_S19/ukb_pleiotropy_ALB_variants.1AO6.by_ca_betasign.colored.png')))+
 #   theme(plot.margin = unit(c(0.7,0,0,0), "cm"))
 
 p3 <- ggdraw() +
-  draw_image(image_read(paste0(figure_path, 'figure4_S18/ukb_pleiotropy_ALB_variants_ac5.1AO6.by_phe_betasign_pmin0.05_exl.colored.png'))) +
+  draw_image(image_read(paste0(figure_path, 'figure6_S19/ukb_pleiotropy_ALB_variants_ac5.1AO6.by_phe_betasign_pmin0.05_exl.colored.png'))) +
   theme(plot.margin = unit(c(0.7, 0, 0, 0), "cm")) +
   draw_label("Calcium\nbinding\nsites", x = 0.15, y = 0.53, hjust = 0.5, vjust = 0.5, color = 'orange', size = 8) +
   draw_line(
@@ -93,7 +93,7 @@ p3 <- ggdraw() +
     arrow = arrow(length = unit(0.03, "npc"))
   )
 p3
-p4 <- ggplot_pdf(image_read_pdf(paste0(figure_path, 'figure4_S18/ukb_pleiotropy_ALB_variants_ac5.P02768.by_phe30680_betasign_pmin0.05_exl.3d_dist_ca.legend.pdf')))+
+p4 <- ggplot_pdf(image_read_pdf(paste0(figure_path, 'figure6_S19/ukb_pleiotropy_ALB_variants_ac5.P02768.by_phe30680_betasign_pmin0.05_exl.3d_dist_ca.legend.pdf')))+
   theme(plot.margin = unit(c(0.7,0,0,0), "cm"))
 
 figure = ggpubr::ggarrange(ggpubr::ggarrange(p1, p2,
@@ -109,6 +109,6 @@ figure = ggpubr::ggarrange(ggpubr::ggarrange(p1, p2,
                            nrow=2, heights = c( 0.16, 0.15), labels = c('', ''), hjust = 0,
                            font.label = list(size = 10, color = "black", face = "bold", family = 'Arial')
 )
-png(paste0(figure_path,'figureS18.png'), height = 5.5, width = 7.5, units = 'in', res = 300)
+png(paste0(figure_path,'figureS19.png'), height = 5.5, width = 7.5, units = 'in', res = 300)
 print(figure)
 dev.off()

@@ -112,6 +112,6 @@ figure = ggpubr::ggarrange(p1, p2, nrow=2, heights = c(0.1, 0.1),
                            font.label = list(size = 10, color = "black", face = "bold", family = 'Arial')
 )
 
-png(paste0(figure_path,'figureS19.png'), height = 8, width = 8, units = 'in', res = 300)
+png(paste0(figure_path,'figureS20.png'), height = 8, width = 8, units = 'in', res = 300)
 print(figure)
 dev.off()

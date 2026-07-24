@@ -3,6 +3,76 @@ library(magick)
 library(ggvenn)
 library(ggVennDiagram)
 
+library(ggplot2)
+
+set.seed(1234)
+
+n <- 50
+
+## Core cluster near zero
+x_core <- rnorm(n, mean = 0, sd = 0.15)
+y_core <- rnorm(n, mean = 0, sd = 0.15)
+
+## Add a few non-null / outlier effects
+k <- 6
+x_out <- rnorm(k, mean = 0.2, sd = 0.3)
+y_out <- rnorm(k, mean = 0.4, sd = 1)
+
+## Combine
+df <- data.frame(
+  trait1 = c(x_core, x_out),
+  trait2 = c(y_core, y_out)
+)
+
+## Plot
+p <- ggplot(df, aes(trait1, trait2)) +
+  geom_point(size = 2.5, color = color_lof) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey70") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey70") +
+  # coord_cartesian(xlim = c(-0.6, 0.8), ylim = c(-0.6, 1.2)) +
+  labs(
+    x = "Variant effect size (Trait A)",
+    y = "Variant effect size (Trait B)",
+    title = NULL
+  ) +
+  theme_classic(base_size = 14)
+png(paste0(figure_path,'figure3/horizontal_example.png'), height =3, width = 6, units = 'in', res = 300)
+print(p)
+dev.off()
+
+
+set.seed(456)
+n <- 50
+
+## Trait 1 effects: mostly small, a few larger
+x_core <- rnorm(n - 5, mean = 0, sd = 0.15)
+x_out  <- rnorm(5, mean = 0.4, sd = 0.5)
+x <- c(x_core, x_out)
+
+## Linear relationship + noise (null: proportional effects)
+beta <- 1.2
+y <- beta * x + rnorm(n, mean = 0, sd = 0.1)
+
+df <- data.frame(
+  trait1 = x,
+  trait2 = y
+)
+
+p <- ggplot(df, aes(trait1, trait2)) +
+  geom_point(size = 2.5, color = color_lof) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey70") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey70") +
+  # coord_cartesian(xlim = c(-0.4, 0.9), ylim = c(-0.4, 1.1)) +
+  labs(
+    x = "Variant effect size (Trait A)",
+    y = "Variant effect size (Trait B)",
+    title = NULL
+  ) +
+  theme_classic(base_size = 14)
+png(paste0(figure_path,'figure3/vertical_example.png'), height =3, width = 6, units = 'in', res = 300)
+print(p)
+dev.off()
+
 gene_data <- read.csv(paste0(data_path, 'gene_phewas_burden_sig_count_239.csv'), sep = '\t') %>%
   # filter(annotation != 'pLoF|missense|LC') %>%
   mutate(annotation = factor(annotation, levels = annotation_types2[c(1,2,4,3)]),
@@ -15,7 +85,7 @@ gene_name_label <- gene_data %>%
   mutate(annotation = factor(annotation, levels = annotation_types2[c(1,2,4,3)]))
 
 figureA <- ggdraw() +
-  draw_image(image_read(paste0('~/Dropbox (Partners HealthCare)/analysis/ukb_exomes_pleiotropy/figure_2024/figure1/figure1_scheme.png')))+
+  draw_image(image_read(paste0('~/Dropbox (Partners HealthCare)/analysis/ukb_exomes_pleiotropy/figure_2024/figure3/figure3_scheme.png')))+
   theme(plot.margin = unit(c(0.7, 0, 0, 0), "cm"))
 
 label_type = labeller(annotation = annotation_names2)
@@ -81,7 +151,7 @@ figureB
 # ggVennDiagram(gene_sets, label = "count")
 
 # figureC <- ggdraw() +
-#   draw_image(image_read(paste0('~/Dropbox (Partners HealthCare)/analysis/ukb_exomes_pleiotropy/figure_2024/figure1/figure1_venn.png')))+
+#   draw_image(image_read(paste0('~/Dropbox (Partners HealthCare)/analysis/ukb_exomes_pleiotropy/figure_2024/figure3/figure3_venn.png')))+
 #   theme(plot.margin = unit(c(0.3, 0, 0.7, 0), "cm"))
 
 data_239 <- read.csv(paste0(data_path, 'gene_phewas_burden_sig_count_239.csv'), sep = '\t') %>%
@@ -107,6 +177,6 @@ figure = ggpubr::ggarrange(figureA, figureB, figureC,
                            ncol=1, common.legend=TRUE, vjust = 0.5, hjust = 0,
                            font.label = list(size = 10, color = "black", face = "bold", family = NULL),
                            heights = c(0.18, 0.18, 0.23))
-png(paste0(figure_path,'figure1.png'), height = 8, width = 8, units = 'in', res = 300)
+png(paste0(figure_path,'figure3.png'), height = 8, width = 8, units = 'in', res = 300)
 print(figure)
 dev.off()

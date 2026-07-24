@@ -1,7 +1,7 @@
 source('~/Dropbox (Partners HealthCare)/github_repo/ALLSPICER/analysis/R/constants.R')
 require("reticulate")
-reticulate::py_config()
-reticulate::py_install("pandas")
+# reticulate::py_config()
+# reticulate::py_install("pandas")  # not needed: RETICULATE_PYTHON (3.11) already has pandas; py_install triggers the broken ephemeral env
 reticulate::source_python("~/Dropbox (Partners HealthCare)/github_repo/ALLSPICER/analysis/python/pickle.py")
 
 plof_1 <- read_pickle_file(paste0(data_path,"pvalue_permutation/gene_plof_(0.01%, 0.1%]_proportion"))
@@ -109,6 +109,6 @@ figure = ggpubr::ggarrange(figureA, figureB, nrow=2, heights = c(0.1, 0.25), lab
 )
 
 
-png(paste0(figure_path,'figureS1.png'), height = 8, width = 8, units = 'in', res = 300)
+png(paste0(figure_path,'figureS8.png'), height = 8, width = 8, units = 'in', res = 300)
 print(figure)
 dev.off()

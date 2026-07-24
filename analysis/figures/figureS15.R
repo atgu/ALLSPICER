@@ -1,113 +1,81 @@
 source('~/Dropbox (Partners HealthCare)/github_repo/ALLSPICER/analysis/R/constants.R')
-library(emojifont)
 
-# Leave one out AF 1e-4
 raw_results_500k <- read_pleiotropy_results('burden', '500k')
 results_500k <- modify_results_table(raw_results_500k, 'burden', '500k')
 
-top_triplets <- read_delim(paste0(data_path, "top_significant_triplets.txt.bgz"), delim='\t', col_types = cols(phenocode = col_character())) %>%
-  mutate(coding = if_else(is.na(coding), '', coding)) %>%
-  mutate(phenoname = paste0(trait_type, '_', phenocode, '_',  pheno_sex, '_',  coding, '_',  modifier)) %>%
-  mutate(BETA_adjusted = sqrt(2*AF*(1-AF))*BETA)
+figure_real_data_qq <- function(results, name=NULL, save=TRUE){
+  results <- results %>%
+    group_by(annotation) %>%
+    arrange(pvalue) %>%
+    add_count() %>%
+    mutate(observed = -log10(pvalue),
+           rank = order(pvalue),
+           expected = -(log10(rank / (n+1))),
+           annotation = factor(annotation, levels = annotation_types))
+  mx <- as.numeric(max(max(results[results$pvalue>0, 'observed']),
+                       max(results[results$pvalue>0, 'expected'])))
 
-leave_one_out_results <- read_csv(paste0('~/Dropbox (Partners HealthCare)/analysis/ukb_exomes_pleiotropy/ALLSPICE/ALLSPICE_leave_one_out_1e-4_example_ALB_results.csv'))
-top_hits <- results_500k %>% filter(pvalue < 1e-6 & sig_gene==2)
-gene_annts <- top_hits %>% merge(., results_500k, by = colnames(results_500k)[c(1, 3:5, 7:9, 11)], suffixes = c('.x', ''), all.x = T) %>% select("gene", "annotation", "pheno1", "description1", "pheno2", "description2")
-gene_lab <- 'ALB'
-gene_top_hits <- top_hits %>% dplyr::filter(gene == gene_lab)
-pheno1_lab <- 'continuous_30600_both_sexes__irnt'
-pheno2_lab <- 'continuous_30680_both_sexes__irnt'
-tmp <- gene_top_hits[1, ]
-gene_name <- tmp[,'gene']
-phenocode1 <- tmp[,'pheno1']
-phenocode2 <- tmp[,'pheno2']
-pheno1_name <- tmp$description1
-pheno2_name <- tmp$description2
-threshold <- 0.05
-c_hat <- results_500k %>%
-  dplyr::filter(gene == gene_lab & pheno1 == pheno1_lab & pheno2 == pheno2_lab) %>%
-  dplyr::select(annotation, c_hat)
+  figure <- results %>%
+    ggplot+ aes(y=observed,x=expected, color = annotation, label = gene) +
+    geom_point(alpha = 0.5) +
+    geom_abline(intercept = 0, slope = 1) +
+    geom_hline(yintercept = -log10(4.23e-6), lty=2) +
+    labs(x=expression(Expected -log[10](p)), y=expression(Observed -log[10](p)), color = 'Annotation') +
+    annotation_color_scale + annotation_fill_scale +
+    xlim(0, mx) +
+    ylim(0, mx) +
+    themes +
+    facet_grid(~annotation, labeller = label_type)
+  # geom_text_repel(max.overlaps = 2)
 
-sub_info <- top_triplets  %>% filter(AF < 1e-4) %>%
-  filter(gene == gene_lab & phenoname %in% c(pheno1_lab, pheno2_lab))
-wide_info <- sub_info %>%
-  mutate(annotation = if_else(annotation %in% c('missense', 'LC'), 'missense|LC', annotation)) %>%
-  filter(annotation %in% c('pLoF', 'missense|LC', 'synonymous')) %>%
-  mutate(
-    BETA_adjusted = sqrt(2*AF*(1-AF))*BETA
-  ) %>%
-  pivot_wider(names_from = phenoname,  values_from = c('BETA', 'Pvalue'), id_cols = c('locus', 'alleles','AF', 'gene', 'annotation')) %>%
-  mutate(significance = case_when(
-    get(paste0('Pvalue_',phenocode1)) <= threshold & get(paste0('Pvalue_',phenocode2)) <= threshold ~ 'Both',
-    get(paste0('Pvalue_',phenocode1)) > threshold & get(paste0('Pvalue_',phenocode2)) <= threshold ~ pheno2_name,
-    get(paste0('Pvalue_',phenocode1)) <= threshold & get(paste0('Pvalue_',phenocode2)) > threshold ~ pheno1_name,
-    get(paste0('Pvalue_',phenocode1)) > threshold & get(paste0('Pvalue_',phenocode2)) > threshold ~ 'None',
-  )) %>%
-  mutate(significance = factor(significance, levels = c('Both', pheno1_name, pheno2_name, 'None')),
-         annotation = if_else(annotation %in% c('missense', 'LC'), 'missense|LC', annotation)) %>%
-  merge(., leave_one_out_results %>% dplyr::filter(pheno1 == phenocode1 & pheno2 == phenocode2) %>%
-          select(locus, alleles, annotation, leave_one_out_pvalue = pvalue, leave_one_out_c_hat=c_hat), by = c('locus', 'alleles', 'annotation'), all.x=T) %>%
-  merge(., raw_results_500k %>% filter(gene==gene_name & pheno1==phenocode1 & pheno2==phenocode2) %>%
-          mutate(annotation = factor(annotation, levels=annotation_types)) %>% select(annotation, pvalue, c_hat), by = 'annotation') %>%
-  mutate(
-    magnitude_change_p = if_else(is.na(leave_one_out_pvalue), 0, abs(log10(leave_one_out_pvalue/if_else(pvalue==0, 1e-320, pvalue)))),
-    magnitude_change_c = if_else(is.na(leave_one_out_c_hat), 0, abs(log10(leave_one_out_c_hat/c_hat))),
-    p_change_direction = if_else(leave_one_out_pvalue > pvalue, 'Less significant', 'More significant')
-    ) %>%
-  mutate(annotation = factor(annotation, levels=annotation_types))
-p2 <- wide_info %>%
+  if(save){
+    png(paste0(figure_path, name, "_qqplot.png"), width=5, height=3.5, units = 'in', res = 300)
+    print(figure)
+    dev.off()
+  }
+  return(figure)
+}
+
+p1 <- figure_real_data_qq(results_500k %>% filter(n_cases1 > 300000 & n_cases2 > 300000), save = F)
+p2 <- results_500k %>%
+  mutate(annotation = factor(annotation, levels = annotation_types)) %>%
   ggplot +
-  aes(x=get(paste0('BETA_',phenocode1)), y=get(paste0('BETA_',phenocode2)), color = annotation)  +
-  geom_point(aes(pch = significance, size = magnitude_change_c)) +
-  # geom_abline(data = c_hat %>%
-  #               mutate(annotation = factor(annotation, levels=annotation_types)), aes(slope = 1/c_hat, intercept = 0, color = annotation), lwd =0.5) +
-  geom_vline(xintercept = 0, lty=2, lwd = 0.25) +
-  geom_hline(yintercept = 0, lty=2, lwd = 0.25) +
-  annotation_color_scale + annotation_fill_scale +
-  labs(x=paste0(pheno1_name), y=pheno2_name, title = NULL) +
-  scale_shape_manual(name=paste0('Nominal significance (', threshold, ')'), breaks = c('Both', pheno1_name, pheno2_name, 'None'), values=c("\u25CF", "\u25D0","\u25D1", "\u25CB")) +
-  scale_size(name= 'Magnitude of c hat change', range = c(2.5, 8)) +
-  geom_text_repel(data = raw_results_500k %>% filter(gene==gene_name & pheno1==phenocode1 & pheno2==phenocode2) %>%
-                    mutate(annotation = factor(annotation, levels=annotation_types)), aes(x=2, y= -2, label=formatC(pvalue, format = "e", digits = 2), color=annotation), vjust = 1, size =5)+
-  facet_wrap(~annotation, labeller = label_type) +
-  guides(alpha = guide_legend(order = 1),
-         shape = guide_legend(override.aes = list(size = 5), order = 2),
-         color = "none") +
-  scale_alpha_discrete(name = 'Pvalue change direction', range = c(1, 0.2)) +
-  theme(legend.position = 'top',
-        legend.box = 'vertical',
-        plot.margin = unit(c(0.5,0,0,0), "cm"))
+  aes(x = corr, y = -log10(pvalue), color = annotation, size = n_var) +
+  labs(x = 'Phenotypic correlation', y = expression(-log[10](p)), size = 'Number of variants', color = 'Annotation') +
+  geom_point(alpha = 0.5) +
+  annotation_color_scale +
+  # scale_y_log10() +
+  geom_hline(yintercept = -log10(0.05/11810), lty = 2) +
+  # geom_vline(xintercept = c(-0.1, 0.1, 0.8, 1), lty = 2) +
+  scale_size_continuous(range = c(0.01, 4)) +
+  facet_grid(~annotation, labeller = labeller(annotation = annotation_names)) + themes + theme(legend.position = 'top')
 
-p1 <- wide_info %>%
-  ggplot +
-  aes(x=get(paste0('BETA_',phenocode1)), y=get(paste0('BETA_',phenocode2)), color = annotation)  +
-  geom_point(aes(pch = significance, size = magnitude_change_p, alpha = p_change_direction)) +
-  # geom_abline(data = c_hat %>%
-  #               mutate(annotation = factor(annotation, levels=annotation_types)), aes(slope = 1/c_hat, intercept = 0, color = annotation), lwd =0.5) +
-  geom_vline(xintercept = 0, lty=2, lwd = 0.25) +
-  geom_hline(yintercept = 0, lty=2, lwd = 0.25) +
-  annotation_color_scale + annotation_fill_scale +
-  labs(x=paste0(pheno1_name), y=pheno2_name, title = NULL) +
-  scale_shape_manual(name=paste0('Nominal significance (', threshold, ')'), breaks = c('Both', pheno1_name, pheno2_name, 'None'), values=c("\u25CF", "\u25D0","\u25D1", "\u25CB")) +
-  scale_size(name= 'Magnitude of p-value change',range = c(2.5, 8)) +
-  scale_alpha_discrete(name = 'p-value change direction', range = c(1, 0.2)) +
-  geom_text_repel(data = raw_results_500k %>% filter(gene==gene_name & pheno1==phenocode1 & pheno2==phenocode2) %>%
-                    mutate(annotation = factor(annotation, levels=annotation_types)), aes(x=2, y= -2, label=formatC(pvalue, format = "e", digits = 2), color=annotation), vjust = 1, size =5)+
-  facet_wrap(~annotation, labeller = label_type) +
-  guides(alpha = guide_legend(order = 1),
-         size = guide_legend(order = 3),
-         shape = guide_legend(override.aes = list(size = 5),order = 2),
-         color = "none") +
-  theme(legend.position = 'top',
-        legend.box = 'vertical',
-        plot.margin = unit(c(0.5,0,0,0), "cm"))
+p3 <- results_500k %>%
+  # filter(annotation != 'synonymous') %>%
+  mutate(sig = if_else(pvalue < 4.24e-6, 'Strictly significant', if_else(pvalue < 0.05, 'Nominally significant', 'Not significant')),
+         annotation = factor(annotation, levels = annotation_types)) %>%
+  mutate(sig = factor(sig, levels = c('Not significant', 'Nominally significant', 'Strictly significant'))) %>%
+  ggplot + aes(x = sig, y = n_var, color = annotation) +
+  scale_y_log10(label = comma) + labs(y = 'Number of variants', x = NULL) +
+  geom_boxplot(width = 0.2, size = 0.75) + annotation_color_scale +
+  facet_wrap(~annotation, labeller=label_type, nrow=1, scale = 'free') +
+  guides(color = 'none') + themes +
+  theme(axis.text.x = element_text(angle = 30, hjust =1))
 
-figure = ggpubr::ggarrange(p1, p2, nrow=2, heights = c(0.1, 0.1),
-                           labels = c('(A) Magnitude of p-value change leaving each variant out when running ALLSPICE',
-                                      '(B) Magnitude of c_hat change leaving each variant out when running ALLSPICE'), hjust = 0,
-                           font.label = list(size = 10, color = "black", face = "bold", family = 'Arial')
-)
-
-png(paste0(figure_path,'figureS15.png'), height = 8, width = 8, units = 'in', res = 300)
+figure <- ggpubr::ggarrange(p1 +
+                              theme(axis.title = element_text(face = 'plain', size = 11),
+                                    plot.margin = unit(c(1,0,0,0.5), "cm"), legend.position = 'none'),
+                            p2+ guides(color = "none") +
+                              theme(axis.title = element_text(face = 'plain', size = 11),
+                                    plot.margin = unit(c(0.7,0,0,0.5), "cm")),
+                            p3 +
+                              theme(axis.title = element_text(face = 'plain', size = 11),
+                                    plot.margin = unit(c(1,0,0,0.5), "cm"), legend.position = 'none'),
+                            labels = c('(A) QQ plots of ALLSPICE test results across high-quality phenotypes',
+                                       '(B) Relationship between phenotypic correlation and ALLSPICE p-value',
+                                       '(C) Number of variants in triplets across significance levels'),
+                            ncol=1, vjust = 2, hjust = 0, font.label = list(size = 10, color = "black", face = "bold", family = NULL),
+                            heights = c(0.18, 0.2, 0.18))
+png(paste0(figure_path,'figureS15.png'), height = 8, width = 10, units = 'in', res = 300)
 print(figure)
 dev.off()

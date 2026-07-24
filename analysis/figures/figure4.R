@@ -1,82 +1,35 @@
-library(ggplot2)
-
-set.seed(1234)
-
-n <- 50
-
-## Core cluster near zero
-x_core <- rnorm(n, mean = 0, sd = 0.15)
-y_core <- rnorm(n, mean = 0, sd = 0.15)
-
-## Add a few non-null / outlier effects
-k <- 6
-x_out <- rnorm(k, mean = 0.2, sd = 0.3)
-y_out <- rnorm(k, mean = 0.4, sd = 1)
-
-## Combine
-df <- data.frame(
-  trait1 = c(x_core, x_out),
-  trait2 = c(y_core, y_out)
-)
-
-## Plot
-p <- ggplot(df, aes(trait1, trait2)) +
-  geom_point(size = 2.5, color = color_lof) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "grey70") +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "grey70") +
-  # coord_cartesian(xlim = c(-0.6, 0.8), ylim = c(-0.6, 1.2)) +
-  labs(
-    x = "Variant effect size (Trait A)",
-    y = "Variant effect size (Trait B)",
-    title = NULL
-  ) +
-  theme_classic(base_size = 14)
-png(paste0(figure_path,'figure2/horizontal_example.png'), height =3, width = 6, units = 'in', res = 300)
-print(p)
-dev.off()
-
-
-set.seed(456)
-n <- 50
-
-## Trait 1 effects: mostly small, a few larger
-x_core <- rnorm(n - 5, mean = 0, sd = 0.15)
-x_out  <- rnorm(5, mean = 0.4, sd = 0.5)
-x <- c(x_core, x_out)
-
-## Linear relationship + noise (null: proportional effects)
-beta <- 1.2
-y <- beta * x + rnorm(n, mean = 0, sd = 0.1)
-
-df <- data.frame(
-  trait1 = x,
-  trait2 = y
-)
-
-p <- ggplot(df, aes(trait1, trait2)) +
-  geom_point(size = 2.5, color = color_lof) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "grey70") +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "grey70") +
-  # coord_cartesian(xlim = c(-0.4, 0.9), ylim = c(-0.4, 1.1)) +
-  labs(
-    x = "Variant effect size (Trait A)",
-    y = "Variant effect size (Trait B)",
-    title = NULL
-  ) +
-  theme_classic(base_size = 14)
-png(paste0(figure_path,'figure2/vertical_example.png'), height =3, width = 6, units = 'in', res = 300)
-print(p)
-dev.off()
-
-
-
-## Make main figure2
+## Make main figure4
 source('~/Dropbox (Partners HealthCare)/github_repo/ALLSPICER/analysis/R/constants.R')
 library(magick)
 
-figureA <- ggdraw() +
-  draw_image(image_read(paste0('~/Dropbox (Partners HealthCare)/analysis/ukb_exomes_pleiotropy/figure_2024/figure2/figure2_scheme.png')))+
-  theme(plot.margin = unit(c(0.7, 0, 0, 0), "cm"))
+gene_data <- read.csv(paste0(data_path, 'gene_phewas_burden_sig_count_239.csv'), sep = '\t') %>%
+  mutate(annotation = factor(annotation, levels = annotation_types2[c(1,2,4,3)]),
+         interval = get_freq_interval(CAF))
+
+gene_name_label <- gene_data %>%
+  filter(n_phewas_sig > 10) %>%
+  filter(annotation != 'pLoF|missense|LC') %>%
+  mutate(annotation = factor(annotation, levels = annotation_types2[c(1,2,4,3)]))
+
+label_type = labeller(annotation = annotation_names2)
+annotation_fill_scale2 = scale_fill_manual(name = 'Annotation', values = colors2, breaks = annotation_types2[c(1,2,4,3)], labels = annotation_names2[c(1,2,4,3)])
+
+figureA <- gene_data %>%
+  filter(n_phewas_sig > 1) %>%
+  ggplot + aes(x = n_phewas_sig, fill=annotation) +
+  geom_histogram(binwidth = 1, position = 'dodge', stat ='count', color='white')  +
+  annotation_color_scale2 +
+  annotation_fill_scale2 +
+  themes + theme_classic() +
+  scale_x_continuous(breaks = c(2, 4, 6, 8, 10, 12, 14, 16)) +
+  theme(legend.position = 'top',
+        legend.direction = 'horizontal') +
+    geom_text(data = gene_name_label, aes(x = n_phewas_sig, y = 3, label = gene_symbol, color = annotation), size = 3, show.legend = FALSE)  +
+  geom_text(data = gene_data %>% filter(n_phewas_sig >= 1) %>% group_by(annotation) %>% dplyr::summarize(n_pleiotropy = sum(n_phewas_sig>1), n = n(), p = sum(n_phewas_sig>1)/n()),
+                  aes(x = Inf, y = 70, color = annotation,label = paste0('Pleiotropic genes (%):\n', n_pleiotropy, '/', n, '=', round(p*100, 2), '%')), hjust = 1, show.legend = FALSE) +
+  labs(x = 'N associations', y = 'N genes', color = NULL, fill= NULL) +
+  facet_grid(~annotation, labeller = label_type)+
+  theme(plot.margin = unit(c(0.5,1,0.5,0.2), "cm"))
 
 raw_results_500k <- read_pleiotropy_results('burden', '500k')
 results_500k <- modify_results_table(raw_results_500k, 'burden', '500k') %>%
@@ -139,17 +92,17 @@ figureB <- results_500k %>%
   facet_wrap(~annotation, labeller=label_type, ncol=1, scale = 'free') +
   guides(color = 'none')
 
-pLoF_sig <- format_sig_result_matrix(sig_results_500k, annot='pLoF')
+pLoF_sig <- format_sig_result_matrix(sig_results_500k %>% filter(corr < 0.8), annot='pLoF')
 figureC1 <- plot_sig_result_matrix(pLoF_sig, annot='pLoF')
 
-mis_sig <- format_sig_result_matrix(sig_results_500k, annot='missense|LC')
+mis_sig <- format_sig_result_matrix(sig_results_500k %>% filter(corr < 0.8), annot='missense|LC')
 figureC2 <- plot_sig_result_matrix(mis_sig, annot='missense|LC')
 
 figureC <- ggpubr::ggarrange(figureC1, figureC2, ncol=1, hjust = 0, align = 'v', heights = c(1, 1),
                              font.label = list(size = 10, color = "black", face = "bold", family = 'Arial')
 )
 # figureB
-# png(paste0(figure_path,'figure2/figure2B.png'), height = 5, width =10, units = 'in', res = 300)
+# png(paste0(figure_path,'figure4/figure4B.png'), height = 5, width =10, units = 'in', res = 300)
 # print(figureB)
 # dev.off()
 #
@@ -166,22 +119,24 @@ figureC <- ggpubr::ggarrange(figureC1, figureC2, ncol=1, hjust = 0, align = 'v',
 #                              font.label = list(size = 10, color = "black", face = "bold", family = 'Arial')
 # )
 # figure3
-# png(paste0(figure_path,'figure2.png'), height = 10, width =12, units = 'in', res = 300)
+# png(paste0(figure_path,'figure4.png'), height = 10, width =12, units = 'in', res = 300)
 # print(figure3)
 # dev.off()
 
 
-figure2 <-ggpubr::ggarrange(ggpubr::ggarrange(figureA + theme(plot.margin = unit(c(0.5, 0, 0, 0), 'cm')),
-                             figureC1 + theme(plot.margin = unit(c(0.5, 1, 0, 1), 'cm')), ncol=1, hjust = 0,
-                             heights = c(1, 1.8), vjust = 1.2,
-                             labels = c('(A) Schematic overview of triplet, gene-level horizontal and vertical pleiotropy',
-                                        '(B) Triplets strictly significant in ALLSPICE test (pLoF; p-value < 4.23e-6)'),
-                             font.label = list(size = 10, color = "black", face = "bold", family = 'Arial')
-                             ), figureC2 + theme(plot.margin = unit(c(0.5, 0, 0, 0), 'cm')),
-                            nrow=1, hjust = 0,  widths = c(1, 1), vjust = 1.2,
-                            labels = c('', '(C) Triplets strictly significant in ALLSPICE test (Missense; p-value < 4.23e-6)'),
-                            font.label = list(size = 10, color = "black", face = "bold", family = 'Arial'))
-figure2
-png(paste0(figure_path,'figure2.png'), height = 7, width =13, units = 'in', res = 300)
-print(figure2)
+bottom_row <- ggpubr::ggarrange(figureC1 + theme(plot.margin = unit(c(0.5, 1, 0, 1), 'cm')),
+                                figureC2 + theme(plot.margin = unit(c(0.5, 1, 0, 1), 'cm')),
+                                nrow = 1, hjust = 0, vjust = 1.2,
+                                labels = c('(B) Pairs of associations strictly significant in ALLSPICE test (pLoF; p-value < 4.23e-6)',
+                                           '(C) Pairs of associations strictly significant in ALLSPICE test (Missense; p-value < 4.23e-6)'),
+                                font.label = list(size = 10, color = "black", face = "bold", family = 'Arial'))
+
+figure4 <- ggpubr::ggarrange(figureA + theme(plot.margin = unit(c(0.5, 0, 0, 0), 'cm')),
+                              bottom_row,
+                              ncol = 1, hjust = 0, vjust = 1.2, heights = c(1, 2.2),
+                              labels = c('(A) Number of associations per gene', ''),
+                              font.label = list(size = 10, color = "black", face = "bold", family = 'Arial'))
+figure4
+png(paste0(figure_path,'figure4.png'), height = 10, width =13, units = 'in', res = 300)
+print(figure4)
 dev.off()

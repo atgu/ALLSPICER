@@ -174,7 +174,7 @@ figure = ggpubr::ggarrange(ggpubr::ggarrange(p1, p2,
                            ncol=1, hjust = 0, heights = c(1,1, 0.8),
                            font.label = list(size = 10, color = "black", face = "bold.italic", family = 'Arial')
 )
-png(paste0(figure_path,'figureS5.png'), height = 10, width = 12, units = 'in', res = 300)
+png(paste0(figure_path,'figureS12.png'), height = 10, width = 12, units = 'in', res = 300)
 print(figure)
 dev.off()
 

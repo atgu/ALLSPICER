@@ -1083,4 +1083,109 @@ plot_sig_result_matrix <- function(data, annot){
   return(p)
 }
 
+format_sig_result_matrix <- function(data, annot){
+  if(annot == 'pLoF'){
+    data <- data %>%
+      mutate(
+        phenotype1_grp = interaction(description1, gene, sep = " | "),
+        phenotype2_grp = interaction(description2, gene, sep = " | ")
+      )
+  }else{
+    data <- data %>%
+      mutate(
+        phenotype1_grp = interaction(description1, str_pad(gene, width = 6, side = "left"), sep = " | "),
+        phenotype2_grp = interaction(description2, str_pad(gene, width = 6, side = "left"), sep = " | ")
+      )
+  }
+
+  data <- data %>%
+    filter(annotation == annot) %>%
+    mutate(
+      phenotype1_grp = factor(phenotype1_grp),
+      phenotype2_grp = factor(phenotype2_grp)
+    ) %>%
+    mutate(
+      logp = if_else(pvalue == 0, NA, -log10(pvalue))
+    )
+  return(data)
+}
+
+plot_sig_result_matrix <- function(data, annot){
+  grids<- expand_grid(
+    phenotype1_grp = levels(data$phenotype1_grp),
+    phenotype2_grp = levels(data$phenotype2_grp)
+  )
+
+  data$phenotype1_grp <- factor(
+    data$phenotype1_grp,
+    levels = unique(data$phenotype1_grp[order(data$gene)])
+  )
+
+  data$phenotype2_grp <- factor(
+    data$phenotype2_grp,
+    levels = unique(data$phenotype2_grp[order(data$gene)])
+  )
+
+  na_cells <- data %>%
+    filter(is.na(logp)) %>%
+    mutate(phenotype1_grp = factor(phenotype1_grp, levels = unique(data$phenotype1_grp[order(data$gene)])),
+           phenotype2_grp = factor(phenotype2_grp, levels = unique(data$phenotype2_grp[order(data$gene)])),
+    )
+
+  colors <- c(color_lof, color_mis)
+  sizes <- c(6, 6)
+  names(colors) <- c('pLoF', 'missense|LC')
+  names(sizes) <- c('pLoF', 'missense|LC')
+
+  p <- data %>%
+    ggplot + aes(x = phenotype1_grp, y = phenotype2_grp) +
+    geom_tile(
+      aes(fill = logp),
+      color = NA
+    ) +
+    geom_text(
+      data = na_cells,
+      label = "*",
+      size = 5,
+      vjust = 0.8,
+      color = "white"
+    ) +
+    # 1) draw borders for every cell (no fill)
+    geom_tile(
+      data = grids,
+      aes(x = phenotype1_grp, y = phenotype2_grp),
+      fill = NA,
+      color = "gray90",
+      linewidth = 0.1
+    ) +
+    # 2) overlay only the observed cells with fill
+    scale_x_discrete(breaks = data$phenotype1_grp) +
+    scale_y_discrete(breaks = data$phenotype2_grp) +
+    scale_fill_gradient(
+      name = expression(-log[10](p[ALLSPICE])),
+      low = "beige",
+      high = colors[annot],
+      na.value = colors[annot],
+    ) +
+    facet_grid(~annotation, labeller=label_type) + themes +
+    theme(
+      axis.text.x = element_text(angle = 90, hjust = 1),
+      axis.text = element_text(size = sizes[annot], family = "mono"),
+      axis.title = element_blank(),
+      axis.line = element_blank(),
+      axis.ticks = element_blank(),
+      legend.position = 'top', legend.direction = 'horizontal',
+      legend.margin = margin(0, 0, 0, 0),
+      legend.box.spacing = unit(0, "pt"),
+      legend.text = element_text(size = 5), legend.title = element_text(size = 6),
+      strip.background = element_rect(fill = "white", size=0.5, color = 'gray90'),
+      strip.text = element_text(face = 'bold', size = 10)
+    ) + guides(
+      fill = guide_colorbar(
+        barheight = unit(6, "pt"),
+        barwidth  = unit(40, "pt")
+      )
+    )
+  return(p)
+}
 

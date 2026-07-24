@@ -1,100 +1,49 @@
 source('~/Dropbox (Partners HealthCare)/github_repo/ALLSPICER/analysis/R/constants.R')
+library(magick)
+library(emojifont)
 
-raw_results_500k <- read_csv('~/Dropbox (Partners HealthCare)/analysis/ukb_exomes_pleiotropy/ALLSPICE/continuous_ALL_AC_5_burden_syn_var_corr_500k_2024_results_corr.csv')
+raw_results_500k <- read_pleiotropy_results('burden', '500k')
 results_500k <- modify_results_table(raw_results_500k, 'burden', '500k')
-results_500k %>%
-  group_by(annotation) %>%
-  dplyr::summarize(sig05 = sum(pvalue < 0.05))
-sig_results_500k <- results_500k %>% filter(pvalue < 4.24e-6)
+
+p1 <- results_500k %>%
+  filter(gene == 'ALPL') %>%
+  select(description1=description2, description2=description1, corr) %>%
+  distinct() %>%
+  rbind(., results_500k %>%
+          filter(gene == 'ALPL') %>%
+          select(description1, description2, corr) %>%
+          distinct()) %>%
+
+  ggplot() +
+  geom_tile(aes(x = description2, y = description1, fill = corr)) +
+  geom_text(aes(x = description2, y = description1, label = round(corr,2)), size=4) +
+  coord_equal() +
+  scale_fill_gradient2(mid="#FBFEF9",low="#0C6291",high="#A63446", limits=c(-0.3,0.3)) +
+  labs(x =NULL, y = NULL) + theme_classic() +
+  theme(plot.margin = unit(c(1.5,1.5,1.5,1.5), "cm") )+
+  themes +
+  theme_classic()  +
+  theme(legend.title = element_text(face = 'plain', size = 11),
+        axis.title = element_text(face = 'plain', size = 11),
+        plot.margin = unit(c(0.5,0,0,0), "cm"),
+        axis.text.x = element_text(angle = 15, hjust =1))
+
+p2 <- ggplot_pdf(image_read(paste0(figure_path, 'figureS17/ukb_pleiotropy_ALPL_variants.7YIV.by_phe_p0.05_exl.colored.png')))+
+  theme(plot.margin = unit(c(0.5,0,0,0), "cm"))
+p3 <- ggplot_pdf(image_read(paste0(figure_path, 'figureS17/ukb_pleiotropy_ALPL_variants.7YIV.by_phe_betasign_exl.colored.png')))+
+  theme(plot.margin = unit(c(0.5,0,0,0), "cm"))
 
 
-figure_real_data_qq <- function(results, name=NULL, save=TRUE){
-  results <- results %>%
-    group_by(annotation) %>%
-    arrange(pvalue) %>%
-    add_count() %>%
-    mutate(observed = -log10(pvalue),
-           rank = order(pvalue),
-           expected = -(log10(rank / (n+1))),
-           annotation = factor(annotation, levels = annotation_types))
-  mx <- as.numeric(max(max(results[results$pvalue>0, 'observed']),
-                       max(results[results$pvalue>0, 'expected'])))
 
-  figure <- results %>%
-    ggplot+ aes(y=observed,x=expected, color = annotation, label = gene) +
-    geom_point(alpha = 0.5) +
-    geom_abline(intercept = 0, slope = 1) +
-    geom_hline(yintercept = -log10(4.23e-6), lty=2) +
-    labs(x=expression(Expected -log[10](p)), y=expression(Observed -log[10](p)), color = 'Annotation') +
-    annotation_color_scale + annotation_fill_scale +
-    xlim(0, mx) +
-    ylim(0, mx) +
-    themes +
-    facet_grid(~annotation, labeller = label_type)
-  # geom_text_repel(max.overlaps = 2)
-
-  if(save){
-    png(paste0(figure_path, name, "_qqplot.png"), width=5, height=3.5, units = 'in', res = 300)
-    print(figure)
-    dev.off()
-  }
-  return(figure)
-}
-
-p1 <- figure_real_data_qq(results_500k %>% filter(sig_gene == 2 & corr < 0.9), save = F)
-p2 <- results_500k %>% filter(sig_gene == 2 & corr < 0.9)%>%
-  mutate(annotation = factor(annotation, levels = annotation_types)) %>%
-  ggplot +
-  aes(x = corr, y = -log10(pvalue), color = annotation, size = n_var) +
-  labs(x = 'Phenotypic correlation', y = expression(-log[10](p)), size = 'Number of variants', color = 'Annotation') +
-  geom_point(alpha = 0.5) +
-  annotation_color_scale +
-  # scale_y_log10() +
-  geom_hline(yintercept = -log10(0.05/nrow(results_500k)), lty = 2) +
-  # geom_vline(xintercept = c(-0.1, 0.1, 0.8, 1), lty = 2) +
-  scale_size_continuous(range = c(0.01, 4)) +
-  facet_grid(~annotation, labeller = labeller(annotation = annotation_names)) + themes + theme(legend.position = 'top')
-
-p3 <- results_500k %>%
-  # filter(annotation != 'synonymous') %>%
-  mutate(sig = if_else(pvalue < 4.24e-6, 'Strictly significant', if_else(pvalue < 0.05, 'Nominally significant', 'Not significant')),
-         annotation = factor(annotation, levels = annotation_types)) %>%
-  mutate(sig = factor(sig, levels = c('Not significant', 'Nominally significant', 'Strictly significant'))) %>%
-  ggplot + aes(x = sig, y = n_var, color = annotation) +
-  scale_y_log10(label = comma) + labs(y = 'Number of variants', x = NULL) +
-  geom_boxplot(width = 0.2, size = 0.75) + annotation_color_scale +
-  facet_wrap(~annotation, labeller=label_type, nrow=1, scale = 'free') +
-  guides(color = 'none') + themes
-
-pLoF_sig <- format_sig_result_matrix(sig_results_500k, annot='pLoF')
-p41 <- plot_sig_result_matrix(pLoF_sig, annot='pLoF')
-
-mis_sig <- format_sig_result_matrix(sig_results_500k, annot='missense|LC')
-p42 <- plot_sig_result_matrix(mis_sig, annot='missense|LC')
-
-p4 <- ggpubr::ggarrange(p41, p42, nrow=1, hjust = 0, align = 'h', widths = c(1.5, 1.2),
-                             font.label = list(size = 10, color = "black", face = "bold", family = 'Arial')
+figure = ggpubr::ggarrange(p1,
+                           ggpubr::ggarrange(p2, p3,
+                                             labels = c('(B) ALPL missense variants on protein structure 7YIV\n      (by p-value)',
+                                                        '(C) ALPL missense variants on protein structure 7YIV\n      (by effect direction)'),
+                                             nrow=1, hjust=0, widths = c(1, 1),
+                                             font.label = list(size = 10, color = "black", face = "bold", family = 'Arial')),
+                           nrow=2, heights = c(0.1, 0.12), labels = c('(A) ALPL pleiotropy domain', ''), hjust = 0,
+                           font.label = list(size = 10, color = "black", face = "bold", family = 'Arial')
 )
-
-figure <- ggpubr::ggarrange(p1 +
-                              theme(axis.title = element_text(face = 'plain', size = 11),
-                                    plot.margin = unit(c(1,0,0,0.5), "cm"), legend.position = 'none'),
-                            p2 + guides(color = "none") +
-                              theme(axis.title = element_text(face = 'plain', size = 11),
-                                    plot.margin = unit(c(0.7,0,0,0.5), "cm")),
-                            p3 +
-                              theme(axis.title = element_text(face = 'plain', size = 11),
-                                    plot.margin = unit(c(1,0,0,0.5), "cm"), legend.position = 'none'),
-                            p4 +
-                              theme(axis.title = element_text(face = 'plain', size = 11),
-                                    plot.margin = unit(c(1,0,0,0.5), "cm"), legend.position = 'none'),
-                            labels = c('(A) QQ plots of ALLSPICE test results across high-quality phenotypes',
-                                       '(B) Relationship between phenotypic correlation and ALLSPICE p-value',
-                                       '(C) Number of variants in triplets across significance levels',
-                                       '(D) Triplets strictly significant in ALLSPICE test (p-value < 4.24e-6)'
-                                       ),
-                            ncol=1, vjust = 2, hjust = 0, font.label = list(size = 10, color = "black", face = "bold", family = NULL), heights = c(0.18, 0.2, 0.18, 0.4))
-
-png(paste0(figure_path,'figureS17.png'), height = 15, width = 12, units = 'in', res = 300)
+png(paste0(figure_path,'figureS17.png'), height = 6, width = 7.5, units = 'in', res = 300)
 print(figure)
 dev.off()
